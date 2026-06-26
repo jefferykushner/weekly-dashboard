@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { captureInbox, flushQueue, queuedCount } from "../lib/db";
+import { captureInbox, captureEvent, flushQueue, queuedCount } from "../lib/db";
+import { toISO } from "../lib/dates";
 
 export default function Capture() {
+  const [mode, setMode] = useState("dump"); // "dump" | "event"
   const [text, setText] = useState("");
+  const [date, setDate] = useState(toISO(new Date()));
   const [recent, setRecent] = useState([]);
   const [queued, setQueued] = useState(queuedCount());
   const [flash, setFlash] = useState("");
@@ -25,10 +28,12 @@ export default function Capture() {
     const t = text.trim();
     if (!t) return;
     setText("");
-    setRecent((r) => [t, ...r].slice(0, 8));
-    const { offline } = await captureInbox(t);
+    const label = mode === "event" ? `${t}  ·  ${date}` : t;
+    setRecent((r) => [label, ...r].slice(0, 8));
+    const { offline } =
+      mode === "event" ? await captureEvent(t, date) : await captureInbox(t);
     setQueued(queuedCount());
-    setFlash(offline ? "Saved offline — will sync" : "Captured");
+    setFlash(offline ? "Saved offline — will sync" : mode === "event" ? "Event captured" : "Captured");
     setTimeout(() => setFlash(""), 1600);
     inputRef.current && inputRef.current.focus();
   };
@@ -36,20 +41,36 @@ export default function Capture() {
   return (
     <div className="cap-root">
       <header className="cap-head">
-        <span className="cap-title">Brain dump</span>
-        <Link className="cap-link" to="/">dashboard →</Link>
+        <span className="cap-title">Capture</span>
+        <Link className="cap-link" to="/">dashboard &rarr;</Link>
       </header>
+
+      <div className="cap-modes">
+        <button className={mode === "dump" ? "on" : ""} onClick={() => setMode("dump")}>Brain dump</button>
+        <button className={mode === "event" ? "on" : ""} onClick={() => setMode("event")}>Event</button>
+      </div>
 
       <div className="cap-box">
         <textarea
           ref={inputRef}
           className="cap-input"
-          placeholder="get it out of your head…"
+          placeholder={mode === "event" ? "what is the appointment? (e.g. 2pm dentist)" : "get it out of your head..."}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); add(); } }}
         />
-        <button className="cap-add" onClick={add}>Capture</button>
+
+        {mode === "event" && (
+          <label className="cap-date">
+            <span>on</span>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+        )}
+
+        <button className="cap-add" onClick={add}>
+          {mode === "event" ? "Add to that day" : "Capture"}
+        </button>
+
         <div className="cap-status">
           {flash && <span className="cap-flash">{flash}</span>}
           {queued > 0 && <span className="cap-queued">{queued} waiting to sync</span>}

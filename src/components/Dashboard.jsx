@@ -7,8 +7,9 @@ import {
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
+  addHabit, renameHabit, deleteHabit, moveToDay,
 } from "../lib/db";
-import { Panel, DayColumn, Row, AddRow } from "./parts";
+import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
 
 const DEFAULT_PANELS = [
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const [overdue, setOverdue] = useState([]);
   const [dirty, setDirty] = useState(false);
   const [themeDraft, setThemeDraft] = useState("");
+  const [habitEdit, setHabitEdit] = useState(false);
 
   const mon = getMonday(addDays(new Date(), weekOffset * 7));
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
@@ -122,6 +124,40 @@ export default function Dashboard() {
     if (dirty) { setDirty(false); await refresh(); }
   };
 
+  // ---- habit management ----
+  const onAddHabit = async (name) => {
+    const pos = model.habits.length ? Math.max(...model.habits.map((h) => h.position || 0)) + 1 : 0;
+    const row = await addHabit(name, pos);
+    setModel((m) => ({ ...m, habits: [...m.habits, row] }));
+  };
+  const onRenameHabit = (id, name) => {
+    setModel((m) => ({ ...m, habits: m.habits.map((h) => (h.id === id ? { ...h, name } : h)) }));
+    renameHabit(id, name).catch(() => {});
+  };
+  const onDeleteHabit = (id) => {
+    setModel((m) => ({ ...m, habits: m.habits.filter((h) => h.id !== id) }));
+    deleteHabit(id).catch(() => {});
+  };
+
+  // ---- move a brain-dump item onto a day ----
+  const dayOptions = weekDates.map((d, i) => ({
+    iso: toISO(d),
+    label: `${DAY_NAMES[i]} ${d.getDate()}`,
+    isToday: toISO(d) === today,
+  }));
+  const moveInboxToDay = (id, iso) => {
+    setModel((m) => {
+      const item = m.inbox.find((x) => x.id === id);
+      const inbox = m.inbox.filter((x) => x.id !== id);
+      const inWeek = iso >= startISO && iso <= toISO(addDays(mon, 6));
+      const dayInWeek = inWeek && item
+        ? [...m.dayInWeek, { ...item, kind: "day", dt: iso, done: false }]
+        : m.dayInWeek;
+      return { ...m, inbox, dayInWeek };
+    });
+    moveToDay(id, iso).catch(() => {});
+  };
+
   const weekLabel = `${MONTHS[mon.getMonth()]} ${mon.getDate()} – ${MONTHS[addDays(mon, 6).getMonth()]} ${addDays(mon, 6).getDate()}`;
 
   return (
@@ -207,6 +243,9 @@ export default function Dashboard() {
             <div className="panel-head">
               <span className="dot" style={{ background: "var(--done)" }} />
               <h3>Daily tracker</h3>
+              <button className="mini-edit" onClick={() => setHabitEdit((e) => !e)}>
+                {habitEdit ? "done" : "edit"}
+              </button>
             </div>
             <div className="habit-grid">
               <div className="habit-corner" />
@@ -215,7 +254,11 @@ export default function Dashboard() {
               ))}
               {model.habits.map((h) => (
                 <React.Fragment key={h.id}>
-                  <div className="habit-name">{h.name}</div>
+                  <div className="habit-name">
+                    {habitEdit
+                      ? <EditableName value={h.name} onSave={(n) => onRenameHabit(h.id, n)} onDelete={() => onDeleteHabit(h.id)} />
+                      : h.name}
+                  </div>
                   {weekDates.map((d) => {
                     const iso = toISO(d);
                     const on = model.marks.has(markKey(h.id, iso));
@@ -224,6 +267,7 @@ export default function Dashboard() {
                         key={iso}
                         className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
                         aria-label={`${h.name} ${iso}`}
+                        disabled={habitEdit}
                         onClick={() => {
                           setModel((m) => {
                             const s = new Set(m.marks);
@@ -238,6 +282,7 @@ export default function Dashboard() {
                 </React.Fragment>
               ))}
             </div>
+            {habitEdit && <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />}
           </div>
 
           {/* Brain dump */}
@@ -251,6 +296,8 @@ export default function Dashboard() {
               {model.inbox.map((it) => (
                 <Row
                   key={it.id} item={it}
+                  dayOptions={dayOptions}
+                  onMove={(iso) => moveInboxToDay(it.id, iso)}
                   onToggle={(d) => toggleIn("inbox")(it.id, d)}
                   onEdit={(t) => editIn("inbox")(it.id, t)}
                   onRemove={() => removeIn("inbox")(it.id)}

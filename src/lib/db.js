@@ -3,8 +3,9 @@ import { toISO, addDays } from "./dates";
 
 // ---------------------------------------------------------------
 //  Offline capture queue
-//  If a brain-dump insert fails (no signal in a tunnel), we stash
-//  it in localStorage and flush it the next time we are online.
+//  If a capture fails (no signal in a tunnel), we stash it in
+//  localStorage and flush it the next time we are online.
+//  Queue items carry their full payload so events sync too.
 // ---------------------------------------------------------------
 const QKEY = "capture_queue_v1";
 
@@ -18,20 +19,32 @@ export function queuedCount() {
   return readQueue().length;
 }
 
-// Insert a quick-capture item. Always optimistic: never blocks the user.
-export async function captureInbox(body) {
-  const text = body.trim();
-  if (!text) return { offline: false };
+// Insert one captured item. Always optimistic: never blocks the user.
+async function captureItem(payload) {
   try {
-    const { error } = await supabase.from("tasks").insert({ kind: "inbox", body: text });
+    const { error } = await supabase.from("tasks").insert(payload);
     if (error) throw error;
     return { offline: false };
   } catch (e) {
     const q = readQueue();
-    q.push({ body: text, at: Date.now() });
+    q.push({ ...payload, at: Date.now() });
     writeQueue(q);
     return { offline: true };
   }
+}
+
+// Quick brain-dump capture.
+export async function captureInbox(body) {
+  const text = body.trim();
+  if (!text) return { offline: false };
+  return captureItem({ kind: "inbox", body: text });
+}
+
+// Capture a dated event/appointment straight from the phone.
+export async function captureEvent(body, dt) {
+  const text = body.trim();
+  if (!text) return { offline: false };
+  return captureItem({ kind: "event", body: text, dt });
 }
 
 // Try to push any queued captures to the server.
@@ -41,8 +54,9 @@ export async function flushQueue() {
   const remaining = [];
   let sent = 0;
   for (const item of q) {
+    const { at, ...payload } = item;
     try {
-      const { error } = await supabase.from("tasks").insert({ kind: "inbox", body: item.body });
+      const { error } = await supabase.from("tasks").insert(payload);
       if (error) throw error;
       sent++;
     } catch {
@@ -83,6 +97,15 @@ export async function setDate(id, dt) {
 
 export async function delTask(id) {
   const { error } = await supabase.from("tasks").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Move a brain-dump item onto a specific day (becomes a checkable to-do).
+export async function moveToDay(id, iso) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ kind: "day", dt: iso, done: false })
+    .eq("id", id);
   if (error) throw error;
 }
 
@@ -130,6 +153,27 @@ export async function toggleHabitMark(habit_id, dt, on) {
     const { error } = await supabase.from("habit_marks").delete().eq("habit_id", habit_id).eq("dt", dt);
     if (error) throw error;
   }
+}
+
+export async function addHabit(name, position) {
+  const { data, error } = await supabase
+    .from("habits")
+    .insert({ name, position })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function renameHabit(id, name) {
+  const { error } = await supabase.from("habits").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteHabit(id) {
+  // habit_marks cascade-delete via the foreign key
+  const { error } = await supabase.from("habits").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------

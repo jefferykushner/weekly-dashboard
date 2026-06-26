@@ -2,8 +2,10 @@ import React, { useState } from "react";
 import { DAY_NAMES } from "../lib/dates";
 
 // A single check-off item. Text is always editable in place (low friction).
-export function Row({ item, onToggle, onEdit, onRemove, compact, accent }) {
+// If dayOptions + onMove are passed, a "→ day" control appears (used by brain dump).
+export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOptions, onMove }) {
   const [text, setText] = useState(item.body);
+  const [menu, setMenu] = useState(false);
   return (
     <div className={"row" + (item.done ? " done" : "") + (compact ? " compact" : "")}>
       <button
@@ -21,6 +23,21 @@ export function Row({ item, onToggle, onEdit, onRemove, compact, accent }) {
         onBlur={() => { if (text !== item.body) onEdit(text); }}
         onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
       />
+      {onMove && (
+        <div className="move-wrap">
+          <button className="move" onClick={() => setMenu((m) => !m)} aria-label="Move to a day" title="Move to a day">⤳</button>
+          {menu && (
+            <div className="move-menu">
+              <div className="move-menu-label">move to…</div>
+              {dayOptions.map((d) => (
+                <button key={d.iso} onClick={() => { setMenu(false); onMove(d.iso); }}>
+                  {d.label}{d.isToday ? " · today" : ""}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <button className="del" onClick={onRemove} aria-label="Delete">×</button>
     </div>
   );
@@ -133,3 +150,20 @@ export function DayColumn({
 }
 
 export { DAY_NAMES };
+
+// Editable label used for managing habit names.
+export function EditableName({ value, onSave, onDelete, placeholder }) {
+  const [v, setV] = useState(value);
+  return (
+    <div className="name-edit">
+      <input
+        value={v}
+        placeholder={placeholder}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => { if (v !== value) onSave(v); }}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+      />
+      <button className="del" onClick={onDelete} aria-label="Delete">×</button>
+    </div>
+  );
+}
