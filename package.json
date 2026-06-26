@@ -1,2 +1,21 @@
-VITE_SUPABASE_URL=https://tlcqcggviikggbqfnffg.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsY3FjZ2d2aWlrZ2dicWZuZmZnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0ODAwNzcsImV4cCI6MjA5ODA1NjA3N30._i5OzwavyREDvT38UlxWITtqITEzdAZtSmiconMzjLk
+{
+  "name": "weekly-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}
