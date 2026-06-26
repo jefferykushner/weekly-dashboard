@@ -164,8 +164,9 @@ export async function loadWeek(weekStart) {
   const panelItems = allTasks.filter((t) => t.kind === "panel");
   const inbox = allTasks.filter((t) => t.kind === "inbox");
   const dayInWeek = allTasks.filter((t) => t.kind === "day" && t.dt >= startISO && t.dt <= endISO);
-  // overdue = a dated task before today that is still not done (drives the nudge)
+  const events = allTasks.filter((t) => t.kind === "event" && t.dt >= startISO && t.dt <= endISO);
+  // overdue = a dated TO-DO before today that is still not done (events never roll over)
   const overdue = allTasks.filter((t) => t.kind === "day" && !t.done && t.dt && t.dt < today);
 
-  return { startISO, endISO, panels, habits, marks, theme, priorities, panelItems, inbox, dayInWeek, overdue };
+  return { startISO, endISO, panels, habits, marks, theme, priorities, panelItems, inbox, dayInWeek, events, overdue };
 }

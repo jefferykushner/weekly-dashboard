@@ -27,7 +27,7 @@ export function Row({ item, onToggle, onEdit, onRemove, compact, accent }) {
 }
 
 // Fast-capture input: type, Enter, it clears and keeps focus.
-export function AddRow({ placeholder, onAdd, subtle }) {
+export function AddRow({ placeholder, onAdd, subtle, event }) {
   const [v, setV] = useState("");
   const submit = () => {
     const t = v.trim();
@@ -36,13 +36,31 @@ export function AddRow({ placeholder, onAdd, subtle }) {
     setV("");
   };
   return (
-    <div className={"add" + (subtle ? " subtle" : "")}>
+    <div className={"add" + (subtle ? " subtle" : "") + (event ? " event" : "")}>
       <input
         value={v}
         placeholder={placeholder}
         onChange={(e) => setV(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
       />
+    </div>
+  );
+}
+
+// An event / appointment: no checkbox, no rollover. Just a noted thing on a day.
+export function EventRow({ item, onEdit, onRemove }) {
+  const [text, setText] = useState(item.body);
+  return (
+    <div className="erow">
+      <span className="edot" />
+      <input
+        className="etext"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => { if (text !== item.body) onEdit(text); }}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+      />
+      <button className="del" onClick={onRemove} aria-label="Delete">×</button>
     </div>
   );
 }
@@ -71,7 +89,11 @@ export function Panel({ title, accent, items, onToggle, onEdit, onRemove, onAdd,
   );
 }
 
-export function DayColumn({ name, date, isToday, items, onToggle, onEdit, onRemove, onAdd }) {
+export function DayColumn({
+  name, date, isToday, items, events,
+  onToggle, onEdit, onRemove, onAdd,
+  onAddEvent, onEditEvent, onRemoveEvent,
+}) {
   const done = items.filter((i) => i.done).length;
   return (
     <div className={"day" + (isToday ? " today" : "")}>
@@ -79,15 +101,32 @@ export function DayColumn({ name, date, isToday, items, onToggle, onEdit, onRemo
         <span className="day-name">{name}</span>
         <span className="day-num">{date.getDate()}</span>
       </div>
-      <div className="day-items">
-        {items.map((it) => (
-          <Row key={it.id} item={it} compact
-            onToggle={(d) => onToggle(it.id, d)}
-            onEdit={(t) => onEdit(it.id, t)}
-            onRemove={() => onRemove(it.id)} />
-        ))}
+
+      <div className="day-body">
+        {events.length > 0 && (
+          <div className="day-events">
+            {events.map((ev) => (
+              <EventRow key={ev.id} item={ev}
+                onEdit={(t) => onEditEvent(ev.id, t)}
+                onRemove={() => onRemoveEvent(ev.id)} />
+            ))}
+          </div>
+        )}
+        <AddRow placeholder="+ event" onAdd={onAddEvent} subtle event />
+
+        {items.length > 0 && <div className="day-divider" />}
+
+        <div className="day-items">
+          {items.map((it) => (
+            <Row key={it.id} item={it} compact
+              onToggle={(d) => onToggle(it.id, d)}
+              onEdit={(t) => onEdit(it.id, t)}
+              onRemove={() => onRemove(it.id)} />
+          ))}
+        </div>
+        <AddRow placeholder="+ to-do" onAdd={onAdd} subtle />
       </div>
-      <AddRow placeholder="+ add" onAdd={onAdd} subtle />
+
       {items.length > 0 && <div className="day-foot">{done}/{items.length}</div>}
     </div>
   );

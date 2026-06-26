@@ -37,7 +37,15 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .day-name{font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted);}
 .day-num{font-family:var(--display); font-weight:700; font-size:16px; margin-left:auto;}
 .day.today .day-num{color:var(--today);}
-.day-items{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:1px;}
+.day-body{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column;}
+.day-events{display:flex; flex-direction:column; gap:1px;}
+.day-divider{height:1px; background:var(--line); margin:5px 1px;}
+.day-items{display:flex; flex-direction:column; gap:1px;}
+.erow{display:flex; align-items:center; gap:6px; padding:2px 0;}
+.edot{width:6px; height:6px; border-radius:50%; background:#6E8BA6; flex:0 0 auto;}
+.etext{flex:1; min-width:0; border:none; background:transparent; font-family:var(--body); font-size:11.5px; font-weight:600; color:#3f5d77; outline:none; padding:1px 0;}
+.add.event input{color:#3f5d77;}
+.add.event input::placeholder{color:#9fb2c4;}
 .day-foot{font-family:var(--mono); font-size:9px; color:var(--muted); text-align:right; padding-top:3px;}
 
 .lower{display:grid; grid-template-columns:repeat(6,1fr); gap:10px; min-height:0;}
@@ -78,8 +86,8 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .habit-cell.on{background:var(--done); border-color:var(--done);}
 .habit-cell:hover{border-color:var(--ink);}
 
-.day-items::-webkit-scrollbar,.items::-webkit-scrollbar,.habit-grid::-webkit-scrollbar{width:5px;}
-.day-items::-webkit-scrollbar-thumb,.items::-webkit-scrollbar-thumb,.habit-grid::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px;}
+.day-body::-webkit-scrollbar,.day-items::-webkit-scrollbar,.items::-webkit-scrollbar,.habit-grid::-webkit-scrollbar{width:5px;}
+.day-body::-webkit-scrollbar-thumb,.day-items::-webkit-scrollbar-thumb,.items::-webkit-scrollbar-thumb,.habit-grid::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px;}
 
 /* ============ ROLLOVER NUDGE ============ */
 .nudge-overlay{position:fixed; inset:0; background:rgba(29,31,36,.55); display:grid; place-items:center; z-index:50; backdrop-filter:blur(2px);}

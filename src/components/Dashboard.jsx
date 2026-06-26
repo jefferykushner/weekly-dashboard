@@ -55,6 +55,7 @@ export default function Dashboard() {
       priorities: d.priorities,
       panelItems: d.panelItems,
       dayInWeek: d.dayInWeek,
+      events: d.events,
       inbox: d.inbox,
     });
     setThemeDraft(d.theme || "");
@@ -157,6 +158,7 @@ export default function Dashboard() {
           {weekDates.map((d, i) => {
             const iso = toISO(d);
             const items = model.dayInWeek.filter((t) => t.dt === iso);
+            const events = model.events.filter((t) => t.dt === iso);
             return (
               <DayColumn
                 key={iso}
@@ -164,10 +166,14 @@ export default function Dashboard() {
                 date={d}
                 isToday={iso === today}
                 items={items}
+                events={events}
                 onToggle={toggleIn("dayInWeek")}
                 onEdit={editIn("dayInWeek")}
                 onRemove={removeIn("dayInWeek")}
                 onAdd={addIn("dayInWeek", { kind: "day", dt: iso })}
+                onAddEvent={addIn("events", { kind: "event", dt: iso })}
+                onEditEvent={editIn("events")}
+                onRemoveEvent={removeIn("events")}
               />
             );
           })}
