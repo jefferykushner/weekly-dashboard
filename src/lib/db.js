@@ -214,3 +214,18 @@ export async function loadWeek(weekStart) {
 
   return { startISO, endISO, panels, habits, marks, theme, priorities, panelItems, inbox, dayInWeek, events, overdue };
 }
+
+// Load a single day's events + to-dos (for the phone Today view).
+export async function loadDay(iso) {
+  const { data } = await supabase
+    .from("tasks")
+    .select("*")
+    .eq("dt", iso)
+    .in("kind", ["day", "event"])
+    .order("created_at", { ascending: true });
+  const rows = data || [];
+  return {
+    events: rows.filter((t) => t.kind === "event"),
+    todos: rows.filter((t) => t.kind === "day"),
+  };
+}

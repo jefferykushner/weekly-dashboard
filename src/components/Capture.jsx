@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
 import { captureInbox, captureEvent, flushQueue, queuedCount } from "../lib/db";
 import { toISO } from "../lib/dates";
+import PhoneTabs from "./PhoneTabs";
 
 export default function Capture() {
   const [mode, setMode] = useState("dump"); // "dump" | "event"
@@ -42,7 +42,6 @@ export default function Capture() {
     <div className="cap-root">
       <header className="cap-head">
         <span className="cap-title">Capture</span>
-        <Link className="cap-link" to="/">dashboard &rarr;</Link>
       </header>
 
       <div className="cap-modes">
@@ -83,6 +82,8 @@ export default function Capture() {
           {recent.map((r, i) => <div className="cap-recent-item" key={i}>{r}</div>)}
         </div>
       )}
+
+      <PhoneTabs active="capture" />
     </div>
   );
 }
