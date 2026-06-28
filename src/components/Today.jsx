@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { loadDay, addTask, setDone, setBody, delTask } from "../lib/db";
+import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark } from "../lib/db";
 import { addDays, toISO, DAY_NAMES, MONTHS } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
 
@@ -52,6 +52,16 @@ export default function Today() {
     setNewEvent("");
     const row = await addTask({ kind: "event", body: t, dt: iso });
     setData((d) => ({ ...d, events: [...d.events, row] }));
+  };
+
+  const toggleHabit = (id) => {
+    const on = data.marked.has(id);
+    setData((d) => {
+      const s = new Set(d.marked);
+      on ? s.delete(id) : s.add(id);
+      return { ...d, marked: s };
+    });
+    toggleHabitMark(id, iso, !on).catch(() => {});
   };
 
   const heading = isToday
@@ -120,6 +130,26 @@ export default function Today() {
                 onKeyDown={(e) => { if (e.key === "Enter") addTodo(); }} />
             </div>
           </section>
+
+          {data.habits.length > 0 && (
+            <section className="tday-section">
+              <div className="tday-label">
+                Daily tracker
+                <span className="tday-count">{data.habits.filter((h) => data.marked.has(h.id)).length}/{data.habits.length}</span>
+              </div>
+              {data.habits.map((h) => {
+                const on = data.marked.has(h.id);
+                return (
+                  <button key={h.id} className={"thabit" + (on ? " on" : "")} onClick={() => toggleHabit(h.id)}>
+                    <span className={"tcheck" + (on ? " on" : "")}>
+                      <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
+                    </span>
+                    <span className="thabit-name">{h.name}</span>
+                  </button>
+                );
+              })}
+            </section>
+          )}
         </div>
       )}
 
