@@ -193,6 +193,11 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .tadd input{width:100%; border:none; border-top:1px dashed #3a3d44; background:transparent; color:var(--surface); font-family:var(--body); font-size:15px; padding:11px 0 4px; margin-top:4px; outline:none;}
 .tadd input::placeholder{color:#6b7079;}
 
+.thabit{display:flex; align-items:center; gap:12px; width:100%; padding:12px 0; border:none; border-bottom:1px solid #26282e; background:transparent; cursor:pointer; text-align:left;}
+.thabit .tcheck{flex:0 0 auto;}
+.thabit-name{font-family:var(--body); font-size:16px; color:var(--surface);}
+.thabit.on .thabit-name{color:#9fcfb4;}
+
 /* ============ PHONE TAB BAR ============ */
 .phone-tabs{position:fixed; left:0; right:0; bottom:0; display:flex; background:#16181c; border-top:1px solid #2f323a; padding:8px 12px calc(8px + env(safe-area-inset-bottom));}
 .phone-tabs a{flex:1; text-align:center; text-decoration:none; font-family:var(--display); font-weight:600; font-size:15px; color:#8a909a; padding:10px; border-radius:10px;}
