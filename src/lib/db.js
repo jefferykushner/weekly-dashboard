@@ -109,6 +109,12 @@ export async function moveToDay(id, iso) {
   if (error) throw error;
 }
 
+// Set an event's recurrence ('none' | 'daily' | 'weekdays' | 'weekly').
+export async function setRecur(id, recur) {
+  const { error } = await supabase.from("tasks").update({ recur }).eq("id", id);
+  if (error) throw error;
+}
+
 // ---------------------------------------------------------------
 //  Week / theme
 // ---------------------------------------------------------------
@@ -215,7 +221,7 @@ export async function loadWeek(weekStart) {
   const panelItems = allTasks.filter((t) => t.kind === "panel");
   const inbox = allTasks.filter((t) => t.kind === "inbox");
   const dayInWeek = allTasks.filter((t) => t.kind === "day" && t.dt >= startISO && t.dt <= endISO);
-  const events = allTasks.filter((t) => t.kind === "event" && t.dt >= startISO && t.dt <= endISO);
+  const events = allTasks.filter((t) => t.kind === "event"); // all events; recurrence is computed per day
   // overdue = a dated TO-DO before today that is still not done (events never roll over)
   const overdue = allTasks.filter((t) => t.kind === "day" && !t.done && t.dt && t.dt < today);
 
@@ -223,17 +229,18 @@ export async function loadWeek(weekStart) {
 }
 
 // Load a single day's events + to-dos + habit state (for the phone Today view).
+// Returns ALL events; the caller decides which occur on the day (recurrence).
 export async function loadDay(iso) {
-  const [tasksRes, habits, marksRes] = await Promise.all([
-    supabase.from("tasks").select("*").eq("dt", iso).in("kind", ["day", "event"]).order("created_at", { ascending: true }),
+  const [todosRes, eventsRes, habits, marksRes] = await Promise.all([
+    supabase.from("tasks").select("*").eq("dt", iso).eq("kind", "day").order("created_at", { ascending: true }),
+    supabase.from("tasks").select("*").eq("kind", "event").order("created_at", { ascending: true }),
     getHabits(),
     supabase.from("habit_marks").select("habit_id").eq("dt", iso),
   ]);
-  const rows = tasksRes.data || [];
   const marked = new Set((marksRes.data || []).map((m) => m.habit_id));
   return {
-    events: rows.filter((t) => t.kind === "event"),
-    todos: rows.filter((t) => t.kind === "day"),
+    todos: todosRes.data || [],
+    events: eventsRes.data || [],
     habits,
     marked,
   };

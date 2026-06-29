@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DAY_NAMES } from "../lib/dates";
+import { DAY_NAMES, RECUR_LABEL } from "../lib/dates";
 
 // A single check-off item. Text is always editable in place (low friction).
 // If dayOptions + onMove are passed, a "→ day" control appears (used by brain dump).
@@ -64,12 +64,15 @@ export function AddRow({ placeholder, onAdd, subtle, event }) {
   );
 }
 
-// An event / appointment: no checkbox, no rollover. Just a noted thing on a day.
-export function EventRow({ item, onEdit, onRemove }) {
+// An event / appointment: no checkbox, no rollover. Optionally recurring.
+export function EventRow({ item, onEdit, onRemove, onRecur }) {
   const [text, setText] = useState(item.body);
+  const [menu, setMenu] = useState(false);
+  const recur = item.recur || "none";
+  const recurring = recur !== "none";
   return (
     <div className="erow">
-      <span className="edot" />
+      <span className={"edot" + (recurring ? " recurring" : "")} />
       <input
         className="etext"
         value={text}
@@ -77,6 +80,26 @@ export function EventRow({ item, onEdit, onRemove }) {
         onBlur={() => { if (text !== item.body) onEdit(text); }}
         onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
       />
+      {onRecur && (
+        <div className="move-wrap">
+          <button
+            className={"recur-btn" + (recurring ? " on" : "")}
+            onClick={() => setMenu((m) => !m)}
+            title={RECUR_LABEL[recur]}
+            aria-label="Set repeat"
+          >↻</button>
+          {menu && (
+            <div className="move-menu">
+              <div className="move-menu-label">repeat</div>
+              {["none", "daily", "weekdays", "weekly"].map((v) => (
+                <button key={v} className={recur === v ? "sel" : ""} onClick={() => { setMenu(false); onRecur(v); }}>
+                  {RECUR_LABEL[v]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <button className="del" onClick={onRemove} aria-label="Delete">×</button>
     </div>
   );
@@ -109,7 +132,7 @@ export function Panel({ title, accent, items, onToggle, onEdit, onRemove, onAdd,
 export function DayColumn({
   name, date, isToday, items, events,
   onToggle, onEdit, onRemove, onAdd,
-  onAddEvent, onEditEvent, onRemoveEvent,
+  onAddEvent, onEditEvent, onRemoveEvent, onRecurEvent,
 }) {
   const done = items.filter((i) => i.done).length;
   return (
@@ -125,7 +148,8 @@ export function DayColumn({
             {events.map((ev) => (
               <EventRow key={ev.id} item={ev}
                 onEdit={(t) => onEditEvent(ev.id, t)}
-                onRemove={() => onRemoveEvent(ev.id)} />
+                onRemove={() => onRemoveEvent(ev.id)}
+                onRecur={(r) => onRecurEvent(ev.id, r)} />
             ))}
           </div>
         )}

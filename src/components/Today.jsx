@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark } from "../lib/db";
-import { addDays, toISO, DAY_NAMES, MONTHS } from "../lib/dates";
+import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
 
 export default function Today() {
@@ -90,12 +90,13 @@ export default function Today() {
         <div className="tday-body">
           <section className="tday-section">
             <div className="tday-label">Events</div>
-            {data.events.map((ev) => (
+            {data.events.filter((ev) => eventOccursOn(ev, iso)).map((ev) => (
               <div className="tevent" key={ev.id}>
-                <span className="tedot" />
+                <span className={"tedot" + (ev.recur && ev.recur !== "none" ? " recurring" : "")} />
                 <input value={ev.body}
                   onChange={(e) => editEvent(ev.id, e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+                {ev.recur && ev.recur !== "none" && <span className="trecur" title="Repeats">↻</span>}
                 <button className="tdel" onClick={() => removeEvent(ev.id)} aria-label="Delete">×</button>
               </div>
             ))}

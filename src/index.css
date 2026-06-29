@@ -43,6 +43,12 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .day-items{display:flex; flex-direction:column; gap:1px;}
 .erow{display:flex; align-items:center; gap:6px; padding:2px 0;}
 .edot{width:6px; height:6px; border-radius:50%; background:#6E8BA6; flex:0 0 auto;}
+.edot.recurring{background:var(--today); box-shadow:0 0 0 2px rgba(224,163,62,.25);}
+.recur-btn{opacity:0; border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:12px; line-height:1; padding:0 2px;}
+.erow:hover .recur-btn{opacity:1;}
+.recur-btn.on{opacity:1; color:var(--today);}
+.recur-btn:hover{color:var(--today);}
+.move-menu button.sel{background:var(--panel); font-weight:600;}
 .etext{flex:1; min-width:0; border:none; background:transparent; font-family:var(--body); font-size:11.5px; font-weight:600; color:#3f5d77; outline:none; padding:1px 0;}
 .add.event input{color:#3f5d77;}
 .add.event input::placeholder{color:#9fb2c4;}
@@ -183,6 +189,8 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 
 .tevent{display:flex; align-items:center; gap:11px; padding:11px 0; border-bottom:1px solid #26282e;}
 .tedot{width:9px; height:9px; border-radius:50%; background:#7fa6c9; flex:0 0 auto;}
+.tedot.recurring{background:var(--today);}
+.trecur{color:var(--today); font-size:13px; flex:0 0 auto;}
 .tevent input{flex:1; min-width:0; border:none; background:transparent; color:#bcd2e6; font-family:var(--body); font-size:16px; font-weight:600; outline:none;}
 
 .ttodo{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid #26282e;}

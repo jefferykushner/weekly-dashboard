@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
-  getMonday, addDays, toISO, todayISO, DAY_NAMES, MONTHS,
+  getMonday, addDays, toISO, todayISO, DAY_NAMES, MONTHS, eventOccursOn,
 } from "../lib/dates";
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
-  addHabit, renameHabit, deleteHabit, moveToDay, persistHabitOrder,
+  addHabit, renameHabit, deleteHabit, moveToDay, persistHabitOrder, setRecur,
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
@@ -167,6 +167,11 @@ export default function Dashboard() {
     moveToDay(id, iso).catch(() => {});
   };
 
+  const onRecurEvent = (id, recur) => {
+    setModel((m) => ({ ...m, events: m.events.map((e) => (e.id === id ? { ...e, recur } : e)) }));
+    setRecur(id, recur).catch(() => {});
+  };
+
   const weekLabel = `${MONTHS[mon.getMonth()]} ${mon.getDate()} – ${MONTHS[addDays(mon, 6).getMonth()]} ${addDays(mon, 6).getDate()}`;
 
   return (
@@ -203,7 +208,7 @@ export default function Dashboard() {
           {weekDates.map((d, i) => {
             const iso = toISO(d);
             const items = model.dayInWeek.filter((t) => t.dt === iso);
-            const events = model.events.filter((t) => t.dt === iso);
+            const events = model.events.filter((ev) => eventOccursOn(ev, iso));
             return (
               <DayColumn
                 key={iso}
@@ -219,6 +224,7 @@ export default function Dashboard() {
                 onAddEvent={addIn("events", { kind: "event", dt: iso })}
                 onEditEvent={editIn("events")}
                 onRemoveEvent={removeIn("events")}
+                onRecurEvent={onRecurEvent}
               />
             );
           })}
