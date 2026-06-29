@@ -176,6 +176,13 @@ export async function deleteHabit(id) {
   if (error) throw error;
 }
 
+// Write a new ordering: each habit's position becomes its index in the list.
+export async function persistHabitOrder(orderedIds) {
+  await Promise.all(
+    orderedIds.map((id, i) => supabase.from("habits").update({ position: i }).eq("id", id))
+  );
+}
+
 // ---------------------------------------------------------------
 //  Panels
 // ---------------------------------------------------------------

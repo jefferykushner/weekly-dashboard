@@ -151,11 +151,17 @@ export function DayColumn({
 
 export { DAY_NAMES };
 
-// Editable label used for managing habit names.
-export function EditableName({ value, onSave, onDelete, placeholder }) {
+// Editable label used for managing habit names (with optional reorder arrows).
+export function EditableName({ value, onSave, onDelete, placeholder, onUp, onDown, canUp, canDown }) {
   const [v, setV] = useState(value);
   return (
     <div className="name-edit">
+      {(onUp || onDown) && (
+        <span className="reorder">
+          <button onClick={onUp} disabled={!canUp} aria-label="Move up">▲</button>
+          <button onClick={onDown} disabled={!canDown} aria-label="Move down">▼</button>
+        </span>
+      )}
       <input
         value={v}
         placeholder={placeholder}

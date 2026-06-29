@@ -7,7 +7,7 @@ import {
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
-  addHabit, renameHabit, deleteHabit, moveToDay,
+  addHabit, renameHabit, deleteHabit, moveToDay, persistHabitOrder,
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
@@ -138,6 +138,15 @@ export default function Dashboard() {
     setModel((m) => ({ ...m, habits: m.habits.filter((h) => h.id !== id) }));
     deleteHabit(id).catch(() => {});
   };
+  const onMoveHabit = (index, dir) => {
+    const arr = [...model.habits];
+    const j = index + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[index], arr[j]] = [arr[j], arr[index]];
+    const reordered = arr.map((h, i) => ({ ...h, position: i }));
+    setModel((m) => ({ ...m, habits: reordered }));
+    persistHabitOrder(reordered.map((h) => h.id)).catch(() => {});
+  };
 
   // ---- move a brain-dump item onto a day ----
   const dayOptions = weekDates.map((d, i) => ({
@@ -252,11 +261,19 @@ export default function Dashboard() {
               {weekDates.map((d, i) => (
                 <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
               ))}
-              {model.habits.map((h) => (
+              {model.habits.map((h, idx) => (
                 <React.Fragment key={h.id}>
                   <div className="habit-name">
                     {habitEdit
-                      ? <EditableName value={h.name} onSave={(n) => onRenameHabit(h.id, n)} onDelete={() => onDeleteHabit(h.id)} />
+                      ? <EditableName
+                          value={h.name}
+                          onSave={(n) => onRenameHabit(h.id, n)}
+                          onDelete={() => onDeleteHabit(h.id)}
+                          onUp={() => onMoveHabit(idx, -1)}
+                          onDown={() => onMoveHabit(idx, 1)}
+                          canUp={idx > 0}
+                          canDown={idx < model.habits.length - 1}
+                        />
                       : h.name}
                   </div>
                   {weekDates.map((d) => {
