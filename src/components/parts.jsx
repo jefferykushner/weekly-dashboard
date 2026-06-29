@@ -1,5 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { DAY_NAMES, RECUR_LABEL } from "../lib/dates";
+
+// Auto-growing, wrapping text field used for every editable item.
+// Enter commits (blurs) instead of inserting a newline, preserving the quick flow.
+export function GrowText({ value, onChange, onCommit, placeholder, className }) {
+  const ref = useRef(null);
+  const resize = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  };
+  useEffect(() => { resize(); }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      className={className}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => { onChange(e.target.value); resize(); }}
+      onBlur={onCommit}
+      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.blur(); } }}
+    />
+  );
+}
 
 // A single check-off item. Text is always editable in place (low friction).
 // If dayOptions + onMove are passed, a "→ day" control appears (used by brain dump).
@@ -16,12 +41,11 @@ export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOpti
       >
         <svg viewBox="0 0 16 16" className="tick"><path d="M3 8.5l3 3 7-8" /></svg>
       </button>
-      <input
+      <GrowText
         className="row-text"
         value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => { if (text !== item.body) onEdit(text); }}
-        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onChange={setText}
+        onCommit={() => { if (text !== item.body) onEdit(text); }}
       />
       {onMove && (
         <div className="move-wrap">
@@ -73,12 +97,11 @@ export function EventRow({ item, onEdit, onRemove, onRecur }) {
   return (
     <div className="erow">
       <span className={"edot" + (recurring ? " recurring" : "")} />
-      <input
+      <GrowText
         className="etext"
         value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => { if (text !== item.body) onEdit(text); }}
-        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onChange={setText}
+        onCommit={() => { if (text !== item.body) onEdit(text); }}
       />
       {onRecur && (
         <div className="move-wrap">

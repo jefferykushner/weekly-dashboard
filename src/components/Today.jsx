@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark } from "../lib/db";
 import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
+import { GrowText } from "./parts";
 
 export default function Today() {
   const [offset, setOffset] = useState(0);
@@ -93,9 +94,7 @@ export default function Today() {
             {data.events.filter((ev) => eventOccursOn(ev, iso)).map((ev) => (
               <div className="tevent" key={ev.id}>
                 <span className={"tedot" + (ev.recur && ev.recur !== "none" ? " recurring" : "")} />
-                <input value={ev.body}
-                  onChange={(e) => editEvent(ev.id, e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+                <GrowText className="tevent-text" value={ev.body} onChange={(v) => editEvent(ev.id, v)} />
                 {ev.recur && ev.recur !== "none" && <span className="trecur" title="Repeats">↻</span>}
                 <button className="tdel" onClick={() => removeEvent(ev.id)} aria-label="Delete">×</button>
               </div>
@@ -119,9 +118,7 @@ export default function Today() {
                 <button className={"tcheck" + (t.done ? " on" : "")} onClick={() => toggle(t.id, !t.done)} aria-label="Toggle done">
                   <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
                 </button>
-                <input value={t.body}
-                  onChange={(e) => editTodo(t.id, e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }} />
+                <GrowText className="ttodo-text" value={t.body} onChange={(v) => editTodo(t.id, v)} />
                 <button className="tdel" onClick={() => removeTodo(t.id)} aria-label="Delete">×</button>
               </div>
             ))}
