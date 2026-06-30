@@ -173,7 +173,7 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .move{opacity:0; border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:13px; line-height:1; padding:0 2px;}
 .row:hover .move{opacity:1;}
 .move:hover{color:var(--today);}
-.move-menu{position:absolute; right:0; top:100%; z-index:20; background:var(--surface); border:1.5px solid var(--line); border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,.25); padding:6px; display:flex; flex-direction:column; gap:2px; min-width:120px;}
+.move-menu{position:absolute; right:0; top:100%; z-index:20; background:var(--surface); border:1.5px solid var(--line); border-radius:8px; box-shadow:0 12px 30px rgba(0,0,0,.25); padding:6px; display:flex; flex-direction:column; gap:2px; min-width:130px; max-height:240px; overflow-y:auto;}
 .move-menu-label{font-family:var(--mono); font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:2px 6px 4px;}
 .move-menu button{text-align:left; border:none; background:transparent; font-family:var(--body); font-size:12px; color:var(--ink); padding:5px 8px; border-radius:5px; cursor:pointer;}
 .move-menu button:hover{background:var(--panel);}

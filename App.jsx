@@ -7,7 +7,7 @@ import {
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
-  addHabit, renameHabit, deleteHabit, moveToDay, persistHabitOrder, setRecur,
+  addHabit, renameHabit, deleteHabit, moveToDay, moveToPanel, persistHabitOrder, setRecur,
   addPanel, renamePanel, deletePanel, persistPanelOrder,
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
@@ -201,6 +201,18 @@ export default function Dashboard() {
     moveToDay(id, iso).catch(() => {});
   };
 
+  const moveInboxToPanel = (id, panel_id) => {
+    setModel((m) => {
+      const item = m.inbox.find((x) => x.id === id);
+      const inbox = m.inbox.filter((x) => x.id !== id);
+      const panelItems = item
+        ? [...m.panelItems, { ...item, kind: "panel", panel_id, dt: null, done: false }]
+        : m.panelItems;
+      return { ...m, inbox, panelItems };
+    });
+    moveToPanel(id, panel_id).catch(() => {});
+  };
+
   const onRecurEvent = (id, recur) => {
     setModel((m) => ({ ...m, events: m.events.map((e) => (e.id === id ? { ...e, recur } : e)) }));
     setRecur(id, recur).catch(() => {});
@@ -333,6 +345,8 @@ export default function Dashboard() {
                   key={it.id} item={it}
                   dayOptions={dayOptions}
                   onMove={(iso) => moveInboxToDay(it.id, iso)}
+                  panelOptions={model.panels.map((p) => ({ id: p.id, title: p.title }))}
+                  onMovePanel={(pid) => moveInboxToPanel(it.id, pid)}
                   onToggle={(d) => toggleIn("inbox")(it.id, d)}
                   onEdit={(t) => editIn("inbox")(it.id, t)}
                   onRemove={() => removeIn("inbox")(it.id)}

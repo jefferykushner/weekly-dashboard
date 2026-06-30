@@ -109,6 +109,15 @@ export async function moveToDay(id, iso) {
   if (error) throw error;
 }
 
+// Move a brain-dump item into one of the project lists.
+export async function moveToPanel(id, panel_id) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ kind: "panel", panel_id, dt: null, done: false })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 // Set an event's recurrence ('none' | 'daily' | 'weekdays' | 'weekly').
 export async function setRecur(id, recur) {
   const { error } = await supabase.from("tasks").update({ recur }).eq("id", id);
