@@ -2,13 +2,15 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
-  getMonday, addDays, toISO, todayISO, DAY_NAMES, MONTHS,
+  getMonday, addDays, toISO, todayISO, DAY_NAMES, MONTHS, eventOccursOn,
 } from "../lib/dates";
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
+  addHabit, renameHabit, deleteHabit, moveToDay, persistHabitOrder, setRecur,
+  addPanel, renamePanel, deletePanel, persistPanelOrder,
 } from "../lib/db";
-import { Panel, DayColumn, Row, AddRow } from "./parts";
+import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
 
 const DEFAULT_PANELS = [
@@ -26,6 +28,9 @@ export default function Dashboard() {
   const [overdue, setOverdue] = useState([]);
   const [dirty, setDirty] = useState(false);
   const [themeDraft, setThemeDraft] = useState("");
+  const [habitEdit, setHabitEdit] = useState(false); // unified edit mode (panels + habits)
+  const editMode = habitEdit;
+  const setEditMode = setHabitEdit;
 
   const mon = getMonday(addDays(new Date(), weekOffset * 7));
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
@@ -122,6 +127,85 @@ export default function Dashboard() {
     if (dirty) { setDirty(false); await refresh(); }
   };
 
+  // ---- habit management ----
+  const onAddHabit = async (name) => {
+    const pos = model.habits.length ? Math.max(...model.habits.map((h) => h.position || 0)) + 1 : 0;
+    const row = await addHabit(name, pos);
+    setModel((m) => ({ ...m, habits: [...m.habits, row] }));
+  };
+  const onRenameHabit = (id, name) => {
+    setModel((m) => ({ ...m, habits: m.habits.map((h) => (h.id === id ? { ...h, name } : h)) }));
+    renameHabit(id, name).catch(() => {});
+  };
+  const onDeleteHabit = (id) => {
+    setModel((m) => ({ ...m, habits: m.habits.filter((h) => h.id !== id) }));
+    deleteHabit(id).catch(() => {});
+  };
+  const onMoveHabit = (index, dir) => {
+    const arr = [...model.habits];
+    const j = index + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[index], arr[j]] = [arr[j], arr[index]];
+    const reordered = arr.map((h, i) => ({ ...h, position: i }));
+    setModel((m) => ({ ...m, habits: reordered }));
+    persistHabitOrder(reordered.map((h) => h.id)).catch(() => {});
+  };
+
+  // ---- panel management ----
+  const PANEL_COLORS = ["#6E8BA6", "#9B7BB5", "#DD6B53", "#4F9E78", "#C49B95", "#7FA6C9", "#B58A3C"];
+  const onAddPanel = async () => {
+    const pos = model.panels.length ? Math.max(...model.panels.map((p) => p.position || 0)) + 1 : 0;
+    const accent = PANEL_COLORS[model.panels.length % PANEL_COLORS.length];
+    const row = await addPanel("New list", accent, pos);
+    setModel((m) => ({ ...m, panels: [...m.panels, row] }));
+  };
+  const onRenamePanel = (id, title) => {
+    setModel((m) => ({ ...m, panels: m.panels.map((p) => (p.id === id ? { ...p, title } : p)) }));
+    renamePanel(id, title).catch(() => {});
+  };
+  const onDeletePanel = (id) => {
+    if (!window.confirm("Delete this list and everything in it?")) return;
+    setModel((m) => ({
+      ...m,
+      panels: m.panels.filter((p) => p.id !== id),
+      panelItems: m.panelItems.filter((t) => t.panel_id !== id),
+    }));
+    deletePanel(id).catch(() => {});
+  };
+  const onMovePanel = (index, dir) => {
+    const arr = [...model.panels];
+    const j = index + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[index], arr[j]] = [arr[j], arr[index]];
+    const reordered = arr.map((p, i) => ({ ...p, position: i }));
+    setModel((m) => ({ ...m, panels: reordered }));
+    persistPanelOrder(reordered.map((p) => p.id)).catch(() => {});
+  };
+
+  // ---- move a brain-dump item onto a day ----
+  const dayOptions = weekDates.map((d, i) => ({
+    iso: toISO(d),
+    label: `${DAY_NAMES[i]} ${d.getDate()}`,
+    isToday: toISO(d) === today,
+  }));
+  const moveInboxToDay = (id, iso) => {
+    setModel((m) => {
+      const item = m.inbox.find((x) => x.id === id);
+      const inbox = m.inbox.filter((x) => x.id !== id);
+      const inWeek = iso >= startISO && iso <= toISO(addDays(mon, 6));
+      const dayInWeek = inWeek && item
+        ? [...m.dayInWeek, { ...item, kind: "day", dt: iso, done: false }]
+        : m.dayInWeek;
+      return { ...m, inbox, dayInWeek };
+    });
+    moveToDay(id, iso).catch(() => {});
+  };
+
+  const onRecurEvent = (id, recur) => {
+    setModel((m) => ({ ...m, events: m.events.map((e) => (e.id === id ? { ...e, recur } : e)) }));
+    setRecur(id, recur).catch(() => {});
+  };
+
   const weekLabel = `${MONTHS[mon.getMonth()]} ${mon.getDate()} – ${MONTHS[addDays(mon, 6).getMonth()]} ${addDays(mon, 6).getDate()}`;
 
   return (
@@ -146,6 +230,9 @@ export default function Dashboard() {
             />
           </div>
           <div className="nav">
+            <button className={"edit-toggle" + (editMode ? " on" : "")} onClick={() => setEditMode((e) => !e)}>
+              {editMode ? "done" : "edit"}
+            </button>
             <Link className="navlink" to="/capture" title="Phone capture">capture</Link>
             <button onClick={() => setWeekOffset((w) => w - 1)} aria-label="Previous week">‹</button>
             <button className={weekOffset === 0 ? "now" : ""} onClick={() => setWeekOffset(0)}>today</button>
@@ -158,7 +245,7 @@ export default function Dashboard() {
           {weekDates.map((d, i) => {
             const iso = toISO(d);
             const items = model.dayInWeek.filter((t) => t.dt === iso);
-            const events = model.events.filter((t) => t.dt === iso);
+            const events = model.events.filter((ev) => eventOccursOn(ev, iso));
             return (
               <DayColumn
                 key={iso}
@@ -174,35 +261,14 @@ export default function Dashboard() {
                 onAddEvent={addIn("events", { kind: "event", dt: iso })}
                 onEditEvent={editIn("events")}
                 onRemoveEvent={removeIn("events")}
+                onRecurEvent={onRecurEvent}
               />
             );
           })}
         </section>
 
         <section className="lower">
-          <Panel
-            title="Top priorities" accent="var(--today)" big
-            items={model.priorities}
-            onToggle={toggleIn("priorities")}
-            onEdit={editIn("priorities")}
-            onRemove={removeIn("priorities")}
-            onAdd={addIn("priorities", { kind: "priority", dt: startISO })}
-          />
-
-          {model.panels.map((p) => (
-            <Panel
-              key={p.id}
-              title={p.title}
-              accent={p.accent}
-              items={model.panelItems.filter((t) => t.panel_id === p.id)}
-              onToggle={toggleIn("panelItems")}
-              onEdit={editIn("panelItems")}
-              onRemove={removeIn("panelItems")}
-              onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
-            />
-          ))}
-
-          {/* Habits */}
+          {/* Daily tracker */}
           <div className="panel habits">
             <div className="panel-head">
               <span className="dot" style={{ background: "var(--done)" }} />
@@ -213,9 +279,21 @@ export default function Dashboard() {
               {weekDates.map((d, i) => (
                 <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
               ))}
-              {model.habits.map((h) => (
+              {model.habits.map((h, idx) => (
                 <React.Fragment key={h.id}>
-                  <div className="habit-name">{h.name}</div>
+                  <div className="habit-name">
+                    {editMode
+                      ? <EditableName
+                          value={h.name}
+                          onSave={(n) => onRenameHabit(h.id, n)}
+                          onDelete={() => onDeleteHabit(h.id)}
+                          onUp={() => onMoveHabit(idx, -1)}
+                          onDown={() => onMoveHabit(idx, 1)}
+                          canUp={idx > 0}
+                          canDown={idx < model.habits.length - 1}
+                        />
+                      : h.name}
+                  </div>
                   {weekDates.map((d) => {
                     const iso = toISO(d);
                     const on = model.marks.has(markKey(h.id, iso));
@@ -224,6 +302,7 @@ export default function Dashboard() {
                         key={iso}
                         className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
                         aria-label={`${h.name} ${iso}`}
+                        disabled={editMode}
                         onClick={() => {
                           setModel((m) => {
                             const s = new Set(m.marks);
@@ -238,6 +317,7 @@ export default function Dashboard() {
                 </React.Fragment>
               ))}
             </div>
+            {editMode && <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />}
           </div>
 
           {/* Brain dump */}
@@ -251,6 +331,8 @@ export default function Dashboard() {
               {model.inbox.map((it) => (
                 <Row
                   key={it.id} item={it}
+                  dayOptions={dayOptions}
+                  onMove={(iso) => moveInboxToDay(it.id, iso)}
                   onToggle={(d) => toggleIn("inbox")(it.id, d)}
                   onEdit={(t) => editIn("inbox")(it.id, t)}
                   onRemove={() => removeIn("inbox")(it.id)}
@@ -259,6 +341,31 @@ export default function Dashboard() {
             </div>
             <AddRow placeholder="dump anything…" onAdd={addIn("inbox", { kind: "inbox" })} />
           </div>
+
+          {/* Your lists — renameable, reorderable */}
+          {model.panels.map((p, idx) => (
+            <Panel
+              key={p.id}
+              title={p.title}
+              accent={p.accent}
+              editMode={editMode}
+              onRename={(t) => onRenamePanel(p.id, t)}
+              onDelete={() => onDeletePanel(p.id)}
+              onLeft={() => onMovePanel(idx, -1)}
+              onRight={() => onMovePanel(idx, 1)}
+              canLeft={idx > 0}
+              canRight={idx < model.panels.length - 1}
+              items={model.panelItems.filter((t) => t.panel_id === p.id)}
+              onToggle={toggleIn("panelItems")}
+              onEdit={editIn("panelItems")}
+              onRemove={removeIn("panelItems")}
+              onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
+            />
+          ))}
+
+          {editMode && (
+            <button className="panel add-panel" onClick={onAddPanel}>＋ add list</button>
+          )}
         </section>
       </div>
 
