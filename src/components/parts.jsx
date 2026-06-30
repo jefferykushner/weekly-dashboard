@@ -27,8 +27,8 @@ export function GrowText({ value, onChange, onCommit, placeholder, className }) 
 }
 
 // A single check-off item. Text is always editable in place (low friction).
-// If dayOptions + onMove are passed, a "→ day" control appears (used by brain dump).
-export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOptions, onMove }) {
+// If onMove is passed, a "→" control appears with day + list targets (used by brain dump).
+export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOptions, onMove, panelOptions, onMovePanel }) {
   const [text, setText] = useState(item.body);
   const [menu, setMenu] = useState(false);
   return (
@@ -49,15 +49,25 @@ export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOpti
       />
       {onMove && (
         <div className="move-wrap">
-          <button className="move" onClick={() => setMenu((m) => !m)} aria-label="Move to a day" title="Move to a day">⤳</button>
+          <button className="move" onClick={() => setMenu((m) => !m)} aria-label="Move" title="Move to a day or list">⤳</button>
           {menu && (
             <div className="move-menu">
-              <div className="move-menu-label">move to…</div>
+              <div className="move-menu-label">to a day</div>
               {dayOptions.map((d) => (
                 <button key={d.iso} onClick={() => { setMenu(false); onMove(d.iso); }}>
                   {d.label}{d.isToday ? " · today" : ""}
                 </button>
               ))}
+              {panelOptions && panelOptions.length > 0 && (
+                <>
+                  <div className="move-menu-label">to a list</div>
+                  {panelOptions.map((p) => (
+                    <button key={p.id} onClick={() => { setMenu(false); onMovePanel(p.id); }}>
+                      {p.title}
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
