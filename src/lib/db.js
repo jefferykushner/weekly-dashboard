@@ -197,6 +197,33 @@ export async function getPanels() {
   return data || [];
 }
 
+export async function addPanel(title, accent, position) {
+  const { data, error } = await supabase
+    .from("panels")
+    .insert({ title, accent, position })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function renamePanel(id, title) {
+  const { error } = await supabase.from("panels").update({ title }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deletePanel(id) {
+  // tasks with this panel_id cascade-delete via the foreign key
+  const { error } = await supabase.from("panels").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function persistPanelOrder(orderedIds) {
+  await Promise.all(
+    orderedIds.map((id, i) => supabase.from("panels").update({ position: i }).eq("id", id))
+  );
+}
+
 // ---------------------------------------------------------------
 //  Bulk load for the dashboard
 // ---------------------------------------------------------------

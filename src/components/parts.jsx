@@ -128,16 +128,37 @@ export function EventRow({ item, onEdit, onRemove, onRecur }) {
   );
 }
 
-export function Panel({ title, accent, items, onToggle, onEdit, onRemove, onAdd, big }) {
+export function Panel({
+  title, accent, items, onToggle, onEdit, onRemove, onAdd, big,
+  editMode, onRename, onDelete, onLeft, onRight, canLeft, canRight,
+}) {
   const done = items.filter((i) => i.done).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
+  const [tDraft, setTDraft] = useState(title);
   return (
     <div className={"panel" + (big ? " big" : "")}>
-      <div className="panel-head">
-        <span className="dot" style={{ background: accent }} />
-        <h3>{title}</h3>
-        {items.length > 0 && <span className="count">{done}/{items.length}</span>}
-      </div>
+      {editMode && onRename ? (
+        <div className="panel-edit-head">
+          <span className="reorder-h">
+            <button onClick={onLeft} disabled={!canLeft} aria-label="Move left">◀</button>
+            <button onClick={onRight} disabled={!canRight} aria-label="Move right">▶</button>
+          </span>
+          <input
+            className="panel-rename"
+            value={tDraft}
+            onChange={(e) => setTDraft(e.target.value)}
+            onBlur={() => { if (tDraft.trim() && tDraft !== title) onRename(tDraft.trim()); }}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          />
+          <button className="del" onClick={onDelete} aria-label="Delete list">×</button>
+        </div>
+      ) : (
+        <div className="panel-head">
+          <span className="dot" style={{ background: accent }} />
+          <h3>{title}</h3>
+          {items.length > 0 && <span className="count">{done}/{items.length}</span>}
+        </div>
+      )}
       <div className="progress"><span style={{ width: pct + "%", background: accent }} /></div>
       <div className="items">
         {items.map((it) => (
