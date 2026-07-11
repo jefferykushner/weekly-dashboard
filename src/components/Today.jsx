@@ -8,6 +8,7 @@ export default function Today() {
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState(null);
   const [newTodo, setNewTodo] = useState("");
+  const [showDone, setShowDone] = useState(false);
   const [newEvent, setNewEvent] = useState("");
 
   const date = addDays(new Date(), offset);
@@ -113,15 +114,31 @@ export default function Today() {
                 <span className="tday-count">{data.todos.filter((t) => t.done).length}/{data.todos.length}</span>
               )}
             </div>
-            {data.todos.map((t) => (
-              <div className={"ttodo" + (t.done ? " done" : "")} key={t.id}>
-                <button className={"tcheck" + (t.done ? " on" : "")} onClick={() => toggle(t.id, !t.done)} aria-label="Toggle done">
+            {data.todos.filter((t) => !t.done).map((t) => (
+              <div className="ttodo" key={t.id}>
+                <button className="tcheck" onClick={() => toggle(t.id, true)} aria-label="Toggle done">
                   <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
                 </button>
                 <GrowText className="ttodo-text" value={t.body} onChange={(v) => editTodo(t.id, v)} />
                 <button className="tdel" onClick={() => removeTodo(t.id)} aria-label="Delete">×</button>
               </div>
             ))}
+            {data.todos.some((t) => t.done) && (
+              <div className="tdone-zone">
+                <button className="tdone-toggle" onClick={() => setShowDone((s) => !s)}>
+                  ✓ {data.todos.filter((t) => t.done).length} done {showDone ? "▾" : "▸"}
+                </button>
+                {showDone && data.todos.filter((t) => t.done).map((t) => (
+                  <div className="ttodo done" key={t.id}>
+                    <button className="tcheck on" onClick={() => toggle(t.id, false)} aria-label="Toggle done">
+                      <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
+                    </button>
+                    <GrowText className="ttodo-text" value={t.body} onChange={(v) => editTodo(t.id, v)} />
+                    <button className="tdel" onClick={() => removeTodo(t.id)} aria-label="Delete">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="tadd">
               <input placeholder="+ to-do" value={newTodo}
                 onChange={(e) => setNewTodo(e.target.value)}

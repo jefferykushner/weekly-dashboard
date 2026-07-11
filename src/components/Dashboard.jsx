@@ -110,6 +110,29 @@ export default function Dashboard() {
     patchList(key, (l) => [...l, row]);
   };
 
+  // Brain dump: checking an item clears it from view (brief fade first).
+  // The row stays in the database marked done, but the dump only shows live thoughts.
+  const [leavingIds, setLeavingIds] = useState(() => new Set());
+  const checkOffInbox = (id, done) => {
+    if (!done) {
+      toggleIn("inbox")(id, false);
+      return;
+    }
+    setDone(id, true).catch(() => {});
+    setLeavingIds((s) => new Set(s).add(id));
+    setTimeout(() => {
+      setModel((m) => ({ ...m, inbox: m.inbox.filter((x) => x.id !== id) }));
+      setLeavingIds((s) => { const n = new Set(s); n.delete(id); return n; });
+    }, 850);
+  };
+
+  // Clear completed items out of a list or day (deletes them).
+  const clearDone = (key, match) => () => {
+    const goners = model[key].filter((x) => x.done && match(x));
+    patchList(key, (l) => l.filter((x) => !(x.done && match(x))));
+    goners.forEach((g) => delTask(g.id).catch(() => {}));
+  };
+
   // ---- nudge handlers ----
   const nudgeMove = async (it) => {
     setOverdue((o) => o.filter((x) => x.id !== it.id));
@@ -274,6 +297,7 @@ export default function Dashboard() {
                 onEditEvent={editIn("events")}
                 onRemoveEvent={removeIn("events")}
                 onRecurEvent={onRecurEvent}
+                onClearDone={clearDone("dayInWeek", (x) => x.dt === iso)}
               />
             );
           })}
@@ -340,14 +364,15 @@ export default function Dashboard() {
               <span className="hint">park it, sort later</span>
             </div>
             <div className="items">
-              {model.inbox.map((it) => (
+              {model.inbox.filter((it) => !it.done || leavingIds.has(it.id)).map((it) => (
                 <Row
                   key={it.id} item={it}
+                  leaving={leavingIds.has(it.id)}
                   dayOptions={dayOptions}
                   onMove={(iso) => moveInboxToDay(it.id, iso)}
                   panelOptions={model.panels.map((p) => ({ id: p.id, title: p.title }))}
                   onMovePanel={(pid) => moveInboxToPanel(it.id, pid)}
-                  onToggle={(d) => toggleIn("inbox")(it.id, d)}
+                  onToggle={(d) => checkOffInbox(it.id, d)}
                   onEdit={(t) => editIn("inbox")(it.id, t)}
                   onRemove={() => removeIn("inbox")(it.id)}
                 />
@@ -374,6 +399,7 @@ export default function Dashboard() {
               onEdit={editIn("panelItems")}
               onRemove={removeIn("panelItems")}
               onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
+              onClearDone={clearDone("panelItems", (x) => x.panel_id === p.id)}
             />
           ))}
 

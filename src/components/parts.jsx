@@ -28,11 +28,11 @@ export function GrowText({ value, onChange, onCommit, placeholder, className }) 
 
 // A single check-off item. Text is always editable in place (low friction).
 // If onMove is passed, a "→" control appears with day + list targets (used by brain dump).
-export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOptions, onMove, panelOptions, onMovePanel }) {
+export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOptions, onMove, panelOptions, onMovePanel, leaving }) {
   const [text, setText] = useState(item.body);
   const [menu, setMenu] = useState(false);
   return (
-    <div className={"row" + (item.done ? " done" : "") + (compact ? " compact" : "")}>
+    <div className={"row" + (item.done ? " done" : "") + (compact ? " compact" : "") + (leaving ? " leaving" : "")}>
       <button
         className={"check" + (item.done ? " on" : "")}
         style={item.done ? { background: accent || "var(--done)", borderColor: accent || "var(--done)" } : undefined}
@@ -140,11 +140,14 @@ export function EventRow({ item, onEdit, onRemove, onRecur }) {
 
 export function Panel({
   title, accent, items, onToggle, onEdit, onRemove, onAdd, big,
-  editMode, onRename, onDelete, onLeft, onRight, canLeft, canRight,
+  editMode, onRename, onDelete, onLeft, onRight, canLeft, canRight, onClearDone,
 }) {
   const done = items.filter((i) => i.done).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
   const [tDraft, setTDraft] = useState(title);
+  const [showDone, setShowDone] = useState(false);
+  const active = items.filter((i) => !i.done);
+  const finished = items.filter((i) => i.done);
   return (
     <div className={"panel" + (big ? " big" : "")}>
       {editMode && onRename ? (
@@ -171,12 +174,30 @@ export function Panel({
       )}
       <div className="progress"><span style={{ width: pct + "%", background: accent }} /></div>
       <div className="items">
-        {items.map((it) => (
+        {active.map((it) => (
           <Row key={it.id} item={it} accent={accent}
             onToggle={(d) => onToggle(it.id, d)}
             onEdit={(t) => onEdit(it.id, t)}
             onRemove={() => onRemove(it.id)} />
         ))}
+        {finished.length > 0 && (
+          <div className="done-zone">
+            <div className="done-bar">
+              <button className="done-toggle" onClick={() => setShowDone((s) => !s)}>
+                ✓ {finished.length} done {showDone ? "▾" : "▸"}
+              </button>
+              {onClearDone && (
+                <button className="done-clear" onClick={onClearDone} title="Remove completed items">clear</button>
+              )}
+            </div>
+            {showDone && finished.map((it) => (
+              <Row key={it.id} item={it} accent={accent}
+                onToggle={(d) => onToggle(it.id, d)}
+                onEdit={(t) => onEdit(it.id, t)}
+                onRemove={() => onRemove(it.id)} />
+            ))}
+          </div>
+        )}
       </div>
       <AddRow placeholder="+ add" onAdd={onAdd} />
     </div>
@@ -186,9 +207,12 @@ export function Panel({
 export function DayColumn({
   name, date, isToday, items, events,
   onToggle, onEdit, onRemove, onAdd,
-  onAddEvent, onEditEvent, onRemoveEvent, onRecurEvent,
+  onAddEvent, onEditEvent, onRemoveEvent, onRecurEvent, onClearDone,
 }) {
   const done = items.filter((i) => i.done).length;
+  const [showDone, setShowDone] = useState(false);
+  const active = items.filter((i) => !i.done);
+  const finished = items.filter((i) => i.done);
   return (
     <div className={"day" + (isToday ? " today" : "")}>
       <div className="day-head">
@@ -212,12 +236,30 @@ export function DayColumn({
         {items.length > 0 && <div className="day-divider" />}
 
         <div className="day-items">
-          {items.map((it) => (
+          {active.map((it) => (
             <Row key={it.id} item={it} compact
               onToggle={(d) => onToggle(it.id, d)}
               onEdit={(t) => onEdit(it.id, t)}
               onRemove={() => onRemove(it.id)} />
           ))}
+          {finished.length > 0 && (
+            <div className="done-zone">
+              <div className="done-bar">
+                <button className="done-toggle" onClick={() => setShowDone((s) => !s)}>
+                  ✓ {finished.length} done {showDone ? "▾" : "▸"}
+                </button>
+                {onClearDone && (
+                  <button className="done-clear" onClick={onClearDone} title="Remove completed items">clear</button>
+                )}
+              </div>
+              {showDone && finished.map((it) => (
+                <Row key={it.id} item={it} compact
+                  onToggle={(d) => onToggle(it.id, d)}
+                  onEdit={(t) => onEdit(it.id, t)}
+                  onRemove={() => onRemove(it.id)} />
+              ))}
+            </div>
+          )}
         </div>
         <AddRow placeholder="+ to-do" onAdd={onAdd} subtle />
       </div>

@@ -255,7 +255,7 @@ export async function loadWeek(weekStart) {
 
   const priorities = allTasks.filter((t) => t.kind === "priority" && t.dt === startISO);
   const panelItems = allTasks.filter((t) => t.kind === "panel");
-  const inbox = allTasks.filter((t) => t.kind === "inbox");
+  const inbox = allTasks.filter((t) => t.kind === "inbox" && !t.done);
   const dayInWeek = allTasks.filter((t) => t.kind === "day" && t.dt >= startISO && t.dt <= endISO);
   const events = allTasks.filter((t) => t.kind === "event"); // all events; recurrence is computed per day
   // overdue = a dated TO-DO before today that is still not done (events never roll over)
