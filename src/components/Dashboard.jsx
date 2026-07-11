@@ -31,6 +31,8 @@ export default function Dashboard() {
   const [habitEdit, setHabitEdit] = useState(false); // unified edit mode (panels + habits)
   const editMode = habitEdit;
   const setEditMode = setHabitEdit;
+  // Brain dump items mid-fade after being checked (see checkOffInbox).
+  const [leavingIds, setLeavingIds] = useState(() => new Set());
 
   const mon = getMonday(addDays(new Date(), weekOffset * 7));
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
@@ -112,7 +114,6 @@ export default function Dashboard() {
 
   // Brain dump: checking an item clears it from view (brief fade first).
   // The row stays in the database marked done, but the dump only shows live thoughts.
-  const [leavingIds, setLeavingIds] = useState(() => new Set());
   const checkOffInbox = (id, done) => {
     if (!done) {
       toggleIn("inbox")(id, false);
