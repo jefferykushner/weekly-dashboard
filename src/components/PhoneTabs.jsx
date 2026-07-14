@@ -6,6 +6,7 @@ export default function PhoneTabs({ active }) {
     <nav className="phone-tabs">
       <Link className={active === "today" ? "on" : ""} to="/today">Today</Link>
       <Link className={active === "capture" ? "on" : ""} to="/capture">Capture</Link>
+      <Link className={active === "words" ? "on" : ""} to="/words">Words</Link>
     </nav>
   );
 }

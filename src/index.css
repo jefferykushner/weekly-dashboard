@@ -250,6 +250,30 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .cap-root{padding-bottom:96px;}
 .cap-recent{padding-bottom:10px;}
 
+/* ============ WORDS (cloud) ============ */
+.words-root{position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; padding:18px 20px 0; overflow:hidden;}
+.words-head{display:flex; align-items:flex-end; justify-content:space-between; color:var(--surface); margin-bottom:12px;}
+.words-head h1{font-family:var(--display); font-size:26px; margin:2px 0 0; color:var(--today); line-height:1;}
+.words-head .kicker{color:#8a909a;}
+.words-meta{display:flex; align-items:center; gap:12px;}
+.words-count{font-family:var(--mono); font-size:11px; color:#8a909a;}
+.words-back{border-color:#3a3d44 !important; color:var(--surface) !important;}
+.words-addbar{display:flex; gap:8px; align-items:center; margin-bottom:12px;}
+.words-addbar input{flex:1; border:1.5px solid #3a3d44; border-radius:10px; background:#26282e; color:var(--surface); font-family:var(--body); font-size:15px; padding:11px 14px; outline:none;}
+.words-addbar input:focus{border-color:var(--today);}
+.words-addbar input::placeholder{color:#6b7079;}
+.words-addbar button{border:none; background:var(--today); color:#3a2a08; font-family:var(--display); font-weight:700; font-size:15px; padding:11px 22px; border-radius:10px; cursor:pointer;}
+.words-flash{font-family:var(--mono); font-size:12px; color:var(--done);}
+.words-canvas{position:relative; flex:1; min-height:0; background:var(--surface); border-radius:6px; box-shadow:0 18px 50px rgba(0,0,0,.45), 0 2px 0 #d9cfbc inset; margin-bottom:14px; overflow:hidden;}
+.words-empty{position:absolute; inset:0; display:grid; place-items:center; color:var(--muted); font-family:var(--mono); font-size:13px; padding:30px; text-align:center;}
+.cloud-word{position:absolute; display:flex; align-items:center; justify-content:center; border:none; background:transparent; font-family:var(--display); font-weight:600; line-height:1; cursor:pointer; padding:0; white-space:nowrap; transition:transform .15s;}
+.cloud-word:hover{transform:scale(1.06); z-index:5;}
+.cloud-word.vert{writing-mode:vertical-rl;}
+@media (max-width:720px){
+  .words-root{padding-bottom:96px;}
+  .words-addbar{flex-wrap:wrap;}
+}
+
 @media (prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important;}}
 
 /* small screens: let the dashboard scroll instead of clipping (it redirects to /capture on phones anyway) */

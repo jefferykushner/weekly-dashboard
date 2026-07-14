@@ -269,6 +269,7 @@ export default function Dashboard() {
             <button className={"edit-toggle" + (editMode ? " on" : "")} onClick={() => setEditMode((e) => !e)}>
               {editMode ? "done" : "edit"}
             </button>
+            <Link className="navlink" to="/words" title="Word cloud">words</Link>
             <Link className="navlink" to="/capture" title="Phone capture">capture</Link>
             <button onClick={() => setWeekOffset((w) => w - 1)} aria-label="Previous week">‹</button>
             <button className={weekOffset === 0 ? "now" : ""} onClick={() => setWeekOffset(0)}>today</button>

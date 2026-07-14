@@ -5,6 +5,7 @@ import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import Capture from "./components/Capture";
 import Today from "./components/Today";
+import Words from "./components/Words";
 
 function useIsPhone() {
   const [phone, setPhone] = useState(typeof window !== "undefined" && window.innerWidth < 720);
@@ -45,6 +46,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/today" element={<Today />} />
       <Route path="/capture" element={<Capture />} />
+      <Route path="/words" element={<Words />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

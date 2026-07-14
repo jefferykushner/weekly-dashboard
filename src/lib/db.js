@@ -264,6 +264,36 @@ export async function loadWeek(weekStart) {
   return { startISO, endISO, panels, habits, marks, theme, priorities, panelItems, inbox, dayInWeek, events, overdue };
 }
 
+// ---------------------------------------------------------------
+//  Word cloud
+// ---------------------------------------------------------------
+export async function getWords() {
+  const { data } = await supabase.from("words").select("id, body, created_at").order("created_at");
+  return data || [];
+}
+
+export async function addWord(body) {
+  const { data, error } = await supabase.from("words").insert({ body }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// Remove ONE occurrence of a word (most recent first).
+export async function removeWordOnce(body) {
+  const { data } = await supabase
+    .from("words")
+    .select("id")
+    .ilike("body", body)
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (data && data.length) {
+    const { error } = await supabase.from("words").delete().eq("id", data[0].id);
+    if (error) throw error;
+    return true;
+  }
+  return false;
+}
+
 // Load a single day's events + to-dos + habit state (for the phone Today view).
 // Returns ALL events; the caller decides which occur on the day (recurrence).
 export async function loadDay(iso) {
