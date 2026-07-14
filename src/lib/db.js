@@ -241,7 +241,7 @@ export async function loadWeek(weekStart) {
   const endISO = toISO(addDays(weekStart, 6));
   const today = toISO(new Date());
 
-  const [panels, habits, marks, theme, allTasks] = await Promise.all([
+  const [panels, habits, marks, theme, allTasks, todoMarks] = await Promise.all([
     getPanels(),
     getHabits(),
     getHabitMarks(startISO, endISO),
@@ -251,17 +251,39 @@ export async function loadWeek(weekStart) {
       .select("*")
       .order("created_at", { ascending: true })
       .then((r) => r.data || []),
+    getTaskMarks(startISO, endISO),
   ]);
 
   const priorities = allTasks.filter((t) => t.kind === "priority" && t.dt === startISO);
   const panelItems = allTasks.filter((t) => t.kind === "panel");
   const inbox = allTasks.filter((t) => t.kind === "inbox" && !t.done);
-  const dayInWeek = allTasks.filter((t) => t.kind === "day" && t.dt >= startISO && t.dt <= endISO);
+  const isRec = (t) => t.recur && t.recur !== "none";
+  const dayInWeek = allTasks.filter((t) => t.kind === "day" && !isRec(t) && t.dt >= startISO && t.dt <= endISO);
+  const recurringTodos = allTasks.filter((t) => t.kind === "day" && isRec(t));
   const events = allTasks.filter((t) => t.kind === "event"); // all events; recurrence is computed per day
-  // overdue = a dated TO-DO before today that is still not done (events never roll over)
-  const overdue = allTasks.filter((t) => t.kind === "day" && !t.done && t.dt && t.dt < today);
+  // overdue = a dated one-off TO-DO before today, still not done (events/recurring never roll over)
+  const overdue = allTasks.filter((t) => t.kind === "day" && !isRec(t) && !t.done && t.dt && t.dt < today);
 
-  return { startISO, endISO, panels, habits, marks, theme, priorities, panelItems, inbox, dayInWeek, events, overdue };
+  return { startISO, endISO, panels, habits, marks, theme, priorities, panelItems, inbox, dayInWeek, recurringTodos, todoMarks, events, overdue };
+}
+
+// ---------------------------------------------------------------
+//  Recurring to-do occurrences
+// ---------------------------------------------------------------
+export async function getTaskMarks(fromISO, toISO) {
+  const { data } = await supabase
+    .from("task_marks")
+    .select("task_id, dt, done, removed")
+    .gte("dt", fromISO)
+    .lte("dt", toISO);
+  return data || [];
+}
+
+export async function setTaskMark(task_id, dt, patch) {
+  const { error } = await supabase
+    .from("task_marks")
+    .upsert({ task_id, dt, ...patch }, { onConflict: "task_id,dt" });
+  if (error) throw error;
 }
 
 // ---------------------------------------------------------------
@@ -297,15 +319,20 @@ export async function removeWordOnce(body) {
 // Load a single day's events + to-dos + habit state (for the phone Today view).
 // Returns ALL events; the caller decides which occur on the day (recurrence).
 export async function loadDay(iso) {
-  const [todosRes, eventsRes, habits, marksRes] = await Promise.all([
-    supabase.from("tasks").select("*").eq("dt", iso).eq("kind", "day").order("created_at", { ascending: true }),
+  const [dayRes, eventsRes, habits, marksRes, todoMarks] = await Promise.all([
+    supabase.from("tasks").select("*").eq("kind", "day").order("created_at", { ascending: true }),
     supabase.from("tasks").select("*").eq("kind", "event").order("created_at", { ascending: true }),
     getHabits(),
     supabase.from("habit_marks").select("habit_id").eq("dt", iso),
+    getTaskMarks(iso, iso),
   ]);
+  const all = dayRes.data || [];
+  const isRec = (t) => t.recur && t.recur !== "none";
   const marked = new Set((marksRes.data || []).map((m) => m.habit_id));
   return {
-    todos: todosRes.data || [],
+    todos: all.filter((t) => !isRec(t) && t.dt === iso),
+    recTodos: all.filter(isRec),
+    todoMarks,
     events: eventsRes.data || [],
     habits,
     marked,

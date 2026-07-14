@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark } from "../lib/db";
+import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark, setTaskMark } from "../lib/db";
 import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
 import { GrowText } from "./parts";
@@ -16,14 +16,25 @@ export default function Today() {
   const isToday = offset === 0;
 
   const refresh = useCallback(async () => {
-    setData(await loadDay(iso));
+    const d = await loadDay(iso);
+    const markMap = new Map(d.todoMarks.map((m) => [m.task_id, m]));
+    const recs = d.recTodos
+      .filter((t) => eventOccursOn(t, iso))
+      .map((t) => {
+        const mk = markMap.get(t.id);
+        return { ...t, done: !!(mk && mk.done), _recurring: true, _removed: !!(mk && mk.removed) };
+      })
+      .filter((t) => !t._removed);
+    setData({ ...d, todos: [...d.todos, ...recs] });
   }, [iso]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
   const toggle = (id, done) => {
     setData((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, done } : t)) }));
-    setDone(id, done).catch(() => {});
+    const item = data && data.todos.find((t) => t.id === id);
+    if (item && item._recurring) setTaskMark(id, iso, { done }).catch(() => {});
+    else setDone(id, done).catch(() => {});
   };
   const editTodo = (id, body) => {
     setData((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, body } : t)) }));
@@ -34,8 +45,10 @@ export default function Today() {
     setBody(id, body).catch(() => {});
   };
   const removeTodo = (id) => {
+    const item = data && data.todos.find((t) => t.id === id);
     setData((d) => ({ ...d, todos: d.todos.filter((t) => t.id !== id) }));
-    delTask(id).catch(() => {});
+    if (item && item._recurring) setTaskMark(id, iso, { removed: true }).catch(() => {});
+    else delTask(id).catch(() => {});
   };
   const removeEvent = (id) => {
     setData((d) => ({ ...d, events: d.events.filter((t) => t.id !== id) }));
@@ -120,6 +133,7 @@ export default function Today() {
                   <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
                 </button>
                 <GrowText className="ttodo-text" value={t.body} onChange={(v) => editTodo(t.id, v)} />
+                {t._recurring && <span className="trecur" title="Repeats — × skips just this day">↻</span>}
                 <button className="tdel" onClick={() => removeTodo(t.id)} aria-label="Delete">×</button>
               </div>
             ))}

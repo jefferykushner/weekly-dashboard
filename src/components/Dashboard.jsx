@@ -8,10 +8,12 @@ import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
   addHabit, renameHabit, deleteHabit, moveToDay, moveToPanel, persistHabitOrder, setRecur,
-  addPanel, renamePanel, deletePanel, persistPanelOrder,
+  addPanel, renamePanel, deletePanel, persistPanelOrder, setTaskMark,
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
+import { buildSuggestions, suggestionFor } from "../lib/suggest";
+import { getWords } from "../lib/db";
 
 const DEFAULT_PANELS = [
   { title: "Work", accent: "#6E8BA6", position: 0 },
@@ -33,6 +35,10 @@ export default function Dashboard() {
   const setEditMode = setHabitEdit;
   // Brain dump items mid-fade after being checked (see checkOffInbox).
   const [leavingIds, setLeavingIds] = useState(() => new Set());
+  // Intention suggestions
+  const [shuffle, setShuffle] = useState(0);
+  const [topWords, setTopWords] = useState([]);
+  const [writingTheme, setWritingTheme] = useState(false);
 
   const mon = getMonday(addDays(new Date(), weekOffset * 7));
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
@@ -62,6 +68,8 @@ export default function Dashboard() {
       priorities: d.priorities,
       panelItems: d.panelItems,
       dayInWeek: d.dayInWeek,
+      recurringTodos: d.recurringTodos,
+      todoMarks: new Map(d.todoMarks.map((m) => [m.task_id + "|" + m.dt, m])),
       events: d.events,
       inbox: d.inbox,
     });
@@ -75,6 +83,20 @@ export default function Dashboard() {
       await refresh();
     })();
   }, [refresh, ensureSeed]);
+
+  // Top cloud words feed personal intention suggestions
+  useEffect(() => {
+    getWords().then((rows) => {
+      const map = new Map();
+      rows.forEach((r) => {
+        const k = r.body.trim().toLowerCase();
+        if (!k) return;
+        map.set(k, (map.get(k) || 0) + 1);
+      });
+      const sorted = [...map.entries()].sort((a, b) => b[1] - a[1]).map(([w]) => w);
+      setTopWords(sorted.slice(0, 3));
+    }).catch(() => {});
+  }, []);
 
   // theme debounce
   useEffect(() => {
@@ -138,6 +160,11 @@ export default function Dashboard() {
   const nudgeMove = async (it) => {
     setOverdue((o) => o.filter((x) => x.id !== it.id));
     await setDate(it.id, today).catch(() => {});
+    setDirty(true);
+  };
+  const nudgeMoveTo = async (it, iso) => {
+    setOverdue((o) => o.filter((x) => x.id !== it.id));
+    await setDate(it.id, iso).catch(() => {});
     setDirty(true);
   };
   const nudgeKeep = (it) => setOverdue((o) => o.filter((x) => x.id !== it.id));
@@ -242,6 +269,68 @@ export default function Dashboard() {
     setRecur(id, recur).catch(() => {});
   };
 
+  // ---- day to-dos: toggle/remove aware of recurrence, reschedule, repeat ----
+  const markPatch = (taskId, iso, patch) =>
+    setModel((m) => {
+      const key = taskId + "|" + iso;
+      const marks = new Map(m.todoMarks);
+      marks.set(key, { task_id: taskId, dt: iso, done: false, removed: false, ...(marks.get(key) || {}), ...patch });
+      return { ...m, todoMarks: marks };
+    });
+
+  const toggleDayItem = (it, done) => {
+    if (it._recurring) {
+      markPatch(it.id, it._dt, { done });
+      setTaskMark(it.id, it._dt, { done }).catch(() => {});
+    } else {
+      toggleIn("dayInWeek")(it.id, done);
+    }
+  };
+
+  const removeDayItem = (it) => {
+    if (it._recurring) {
+      // deleting one occurrence = skip that day
+      markPatch(it.id, it._dt, { removed: true });
+      setTaskMark(it.id, it._dt, { removed: true }).catch(() => {});
+    } else {
+      removeIn("dayInWeek")(it.id);
+    }
+  };
+
+  const rescheduleTodo = (id, iso) => {
+    setModel((m) => ({
+      ...m,
+      dayInWeek: m.dayInWeek
+        .map((t) => (t.id === id ? { ...t, dt: iso } : t))
+        .filter((t) => t.dt >= startISO && t.dt <= toISO(addDays(mon, 6))),
+    }));
+    setDate(id, iso).catch(() => {});
+  };
+
+  const onRecurTodo = (id, recur) => {
+    setModel((m) => {
+      const inPlain = m.dayInWeek.find((t) => t.id === id);
+      if (recur !== "none" && inPlain) {
+        return { ...m, dayInWeek: m.dayInWeek.filter((t) => t.id !== id), recurringTodos: [...m.recurringTodos, { ...inPlain, recur, done: false }] };
+      }
+      if (recur === "none") {
+        const series = m.recurringTodos.find((t) => t.id === id);
+        if (series) {
+          return { ...m, recurringTodos: m.recurringTodos.filter((t) => t.id !== id), dayInWeek: series.dt >= startISO && series.dt <= toISO(addDays(mon, 6)) ? [...m.dayInWeek, { ...series, recur: "none" }] : m.dayInWeek };
+        }
+      }
+      return { ...m, recurringTodos: m.recurringTodos.map((t) => (t.id === id ? { ...t, recur } : t)) };
+    });
+    setRecur(id, recur).catch(() => {});
+  };
+
+  const skipDay = (it) => removeDayItem(it);
+  const deleteSeries = (id) => {
+    if (!window.confirm("Delete this repeating to-do everywhere?")) return;
+    setModel((m) => ({ ...m, recurringTodos: m.recurringTodos.filter((t) => t.id !== id) }));
+    delTask(id).catch(() => {});
+  };
+
   const weekLabel = `${MONTHS[mon.getMonth()]} ${mon.getDate()} – ${MONTHS[addDays(mon, 6).getMonth()]} ${addDays(mon, 6).getDate()}`;
 
   return (
@@ -258,12 +347,30 @@ export default function Dashboard() {
           </div>
           <div className="theme">
             <span className="kicker">intention</span>
-            <input
-              className="theme-input"
-              value={themeDraft}
-              placeholder="what's this week about?"
-              onChange={(e) => setThemeDraft(e.target.value)}
-            />
+            {themeDraft.trim() === "" && !writingTheme ? (() => {
+              const daySeed = Math.floor(Date.now() / 86400000);
+              const personal = buildSuggestions(model, topWords);
+              const sug = suggestionFor(daySeed, shuffle, personal);
+              return (
+                <div className="theme-suggest">
+                  <button className="suggest-text" title="Use this as the week's intention"
+                    onClick={() => setThemeDraft(sug)}>{sug}</button>
+                  <button className="suggest-shuffle" title="Another suggestion"
+                    onClick={() => setShuffle((n) => n + 1)}>↻</button>
+                  <button className="suggest-write" title="Write your own"
+                    onClick={() => setWritingTheme(true)}>write my own</button>
+                </div>
+              );
+            })() : (
+              <input
+                className="theme-input"
+                value={themeDraft}
+                autoFocus={writingTheme}
+                placeholder="what's this week about?"
+                onChange={(e) => setThemeDraft(e.target.value)}
+                onBlur={() => { if (themeDraft.trim() === "") { setThemeDraft(""); setWritingTheme(false); } }}
+              />
+            )}
           </div>
           <div className="nav">
             <button className={"edit-toggle" + (editMode ? " on" : "")} onClick={() => setEditMode((e) => !e)}>
@@ -281,7 +388,15 @@ export default function Dashboard() {
         <section className="week">
           {weekDates.map((d, i) => {
             const iso = toISO(d);
-            const items = model.dayInWeek.filter((t) => t.dt === iso);
+            const plain = model.dayInWeek.filter((t) => t.dt === iso);
+            const recs = model.recurringTodos
+              .filter((t) => eventOccursOn(t, iso))
+              .map((t) => {
+                const mk = model.todoMarks.get(t.id + "|" + iso);
+                return { ...t, done: !!(mk && mk.done), _recurring: true, _dt: iso, _removed: !!(mk && mk.removed) };
+              })
+              .filter((t) => !t._removed);
+            const items = [...plain, ...recs];
             const events = model.events.filter((ev) => eventOccursOn(ev, iso));
             return (
               <DayColumn
@@ -291,9 +406,20 @@ export default function Dashboard() {
                 isToday={iso === today}
                 items={items}
                 events={events}
-                onToggle={toggleIn("dayInWeek")}
-                onEdit={editIn("dayInWeek")}
-                onRemove={removeIn("dayInWeek")}
+                dayOptions={dayOptions}
+                onReschedule={rescheduleTodo}
+                onRecurTodo={onRecurTodo}
+                onSkipDay={skipDay}
+                onDeleteSeries={deleteSeries}
+                onToggle={toggleDayItem}
+                onEdit={(id, t) => {
+                  // edits apply to the series row if recurring
+                  if (model.recurringTodos.some((r) => r.id === id)) {
+                    setModel((m) => ({ ...m, recurringTodos: m.recurringTodos.map((r) => (r.id === id ? { ...r, body: t } : r)) }));
+                    setBody(id, t).catch(() => {});
+                  } else editIn("dayInWeek")(id, t);
+                }}
+                onRemove={removeDayItem}
                 onAdd={addIn("dayInWeek", { kind: "day", dt: iso })}
                 onAddEvent={addIn("events", { kind: "event", dt: iso })}
                 onEditEvent={editIn("events")}
@@ -414,6 +540,7 @@ export default function Dashboard() {
       <RolloverNudge
         items={overdue}
         onMove={nudgeMove}
+        onMoveTo={nudgeMoveTo}
         onKeep={nudgeKeep}
         onDrop={nudgeDrop}
         onClose={closeNudge}

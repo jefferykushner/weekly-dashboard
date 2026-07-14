@@ -6,7 +6,7 @@ function fmt(iso) {
   return `${MONTHS[d.getMonth()]} ${d.getDate()}`;
 }
 
-export default function RolloverNudge({ items, onMove, onKeep, onDrop, onClose }) {
+export default function RolloverNudge({ items, onMove, onMoveTo, onKeep, onDrop, onClose }) {
   if (!items || items.length === 0) return null;
   return (
     <div className="nudge-overlay" role="dialog" aria-modal="true">
@@ -22,6 +22,10 @@ export default function RolloverNudge({ items, onMove, onKeep, onDrop, onClose }
               <div className="nudge-body">{it.body}</div>
               <div className="nudge-actions">
                 <button className="nudge-move" onClick={() => onMove(it)}>Move to today</button>
+                <label className="nudge-date">
+                  pick a date
+                  <input type="date" onChange={(e) => { if (e.target.value) onMoveTo(it, e.target.value); }} />
+                </label>
                 <button className="nudge-keep" onClick={() => onKeep(it)}>Leave it</button>
                 <button className="nudge-drop" onClick={() => onDrop(it)}>Done / drop</button>
               </div>

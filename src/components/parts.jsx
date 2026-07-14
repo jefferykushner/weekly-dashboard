@@ -28,9 +28,10 @@ export function GrowText({ value, onChange, onCommit, placeholder, className }) 
 
 // A single check-off item. Text is always editable in place (low friction).
 // If onMove is passed, a "→" control appears with day + list targets (used by brain dump).
-export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOptions, onMove, panelOptions, onMovePanel, leaving }) {
+export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOptions, onMove, panelOptions, onMovePanel, leaving, todoCtl }) {
   const [text, setText] = useState(item.body);
   const [menu, setMenu] = useState(false);
+  const isSeries = !!item._recurring;
   return (
     <div className={"row" + (item.done ? " done" : "") + (compact ? " compact" : "") + (leaving ? " leaving" : "")}>
       <button
@@ -47,6 +48,44 @@ export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOpti
         onChange={setText}
         onCommit={() => { if (text !== item.body) onEdit(text); }}
       />
+            {todoCtl && (
+        <div className="move-wrap">
+          <button className={"move" + (isSeries ? " recurring-mark" : "")} onClick={() => setMenu((m) => !m)} aria-label="Options" title={isSeries ? "Repeats — options" : "Reschedule / repeat"}>{isSeries ? "↻" : "⤳"}</button>
+          {menu && (
+            <div className="move-menu">
+              {!isSeries && (
+                <>
+                  <div className="move-menu-label">move to</div>
+                  {todoCtl.dayOptions.map((d) => (
+                    <button key={d.iso} onClick={() => { setMenu(false); todoCtl.onReschedule(d.iso); }}>
+                      {d.label}{d.isToday ? " · today" : ""}
+                    </button>
+                  ))}
+                  <input
+                    className="menu-date"
+                    type="date"
+                    onChange={(e) => { if (e.target.value) { setMenu(false); todoCtl.onReschedule(e.target.value); } }}
+                  />
+                </>
+              )}
+              <div className="move-menu-label">repeat</div>
+              {["none", "daily", "weekdays", "weekly"].map((v) => (
+                <button key={v} className={(item.recur || "none") === v ? "sel" : ""}
+                  onClick={() => { setMenu(false); todoCtl.onRecur(v); }}>
+                  {RECUR_LABEL[v]}
+                </button>
+              ))}
+              {isSeries && (
+                <>
+                  <div className="move-menu-label">this series</div>
+                  <button onClick={() => { setMenu(false); todoCtl.onSkipDay(); }}>Skip just this day</button>
+                  <button className="danger" onClick={() => { setMenu(false); todoCtl.onDeleteSeries(); }}>Delete series</button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {onMove && (
         <div className="move-wrap">
           <button className="move" onClick={() => setMenu((m) => !m)} aria-label="Move" title="Move to a day or list">⤳</button>
@@ -208,6 +247,7 @@ export function DayColumn({
   name, date, isToday, items, events,
   onToggle, onEdit, onRemove, onAdd,
   onAddEvent, onEditEvent, onRemoveEvent, onRecurEvent, onClearDone,
+  dayOptions, onReschedule, onRecurTodo, onSkipDay, onDeleteSeries,
 }) {
   const done = items.filter((i) => i.done).length;
   const [showDone, setShowDone] = useState(false);
@@ -237,10 +277,17 @@ export function DayColumn({
 
         <div className="day-items">
           {active.map((it) => (
-            <Row key={it.id} item={it} compact
-              onToggle={(d) => onToggle(it.id, d)}
+            <Row key={(it._recurring ? it.id + it._dt : it.id)} item={it} compact
+              todoCtl={{
+                dayOptions,
+                onReschedule: (iso) => onReschedule(it.id, iso),
+                onRecur: (v) => onRecurTodo(it.id, v),
+                onSkipDay: () => onSkipDay(it),
+                onDeleteSeries: () => onDeleteSeries(it.id),
+              }}
+              onToggle={(d) => onToggle(it, d)}
               onEdit={(t) => onEdit(it.id, t)}
-              onRemove={() => onRemove(it.id)} />
+              onRemove={() => onRemove(it)} />
           ))}
           {finished.length > 0 && (
             <div className="done-zone">
@@ -253,10 +300,10 @@ export function DayColumn({
                 )}
               </div>
               {showDone && finished.map((it) => (
-                <Row key={it.id} item={it} compact
-                  onToggle={(d) => onToggle(it.id, d)}
+                <Row key={(it._recurring ? it.id + it._dt : it.id)} item={it} compact
+                  onToggle={(d) => onToggle(it, d)}
                   onEdit={(t) => onEdit(it.id, t)}
-                  onRemove={() => onRemove(it.id)} />
+                  onRemove={() => onRemove(it)} />
               ))}
             </div>
           )}

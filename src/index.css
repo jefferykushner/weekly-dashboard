@@ -24,6 +24,13 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .theme{flex:1; min-width:0;}
 .theme-input{width:100%; border:none; background:transparent; font-family:var(--display); font-size:18px; font-weight:500; color:var(--ink); outline:none; padding:2px 0;}
 .theme-input::placeholder{color:var(--muted); font-weight:400;}
+.theme-suggest{display:flex; align-items:baseline; gap:10px; min-width:0;}
+.suggest-text{border:none; background:transparent; font-family:var(--display); font-size:17px; font-style:italic; font-weight:500; color:#7d735f; cursor:pointer; padding:2px 0; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; transition:color .15s;}
+.suggest-text:hover{color:var(--ink);}
+.suggest-shuffle{border:none; background:transparent; color:var(--muted); font-size:14px; cursor:pointer; padding:0 2px; flex:0 0 auto;}
+.suggest-shuffle:hover{color:var(--today);}
+.suggest-write{border:none; background:transparent; font-family:var(--mono); font-size:10px; color:var(--muted); cursor:pointer; padding:0; flex:0 0 auto; text-decoration:underline dotted;}
+.suggest-write:hover{color:var(--ink);}
 .nav{display:flex; gap:6px; align-items:center; flex:0 0 auto;}
 .nav button,.navlink{font-family:var(--mono); font-size:12px; border:1.5px solid var(--line); background:var(--surface); color:var(--ink); border-radius:999px; padding:6px 12px; cursor:pointer; transition:.15s; text-decoration:none; line-height:1;}
 .nav button:hover,.navlink:hover{border-color:var(--ink);}
@@ -64,6 +71,11 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .recur-btn.on{opacity:1; color:var(--today);}
 .recur-btn:hover{color:var(--today);}
 .move-menu button.sel{background:var(--panel); font-weight:600;}
+.move-menu button.danger{color:var(--urgent);}
+.menu-date{margin:2px 6px 4px; border:1px solid var(--line); border-radius:5px; font-family:var(--body); font-size:11px; padding:3px 5px; background:#fff; color:var(--ink);}
+.move.recurring-mark{opacity:1; color:var(--today);}
+.nudge-date{display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--muted); border:1.5px solid var(--line); border-radius:999px; padding:4px 10px; cursor:pointer;}
+.nudge-date input{border:none; background:transparent; font-family:var(--body); font-size:11px; color:var(--ink); outline:none; width:110px;}
 .etext{flex:1; min-width:0; border:none; background:transparent; font-family:var(--body); font-size:11.5px; line-height:1.3; font-weight:600; color:#3f5d77; outline:none; padding:1px 0; resize:none; overflow:hidden; white-space:pre-wrap; overflow-wrap:anywhere; display:block;}
 .add.event input{color:#3f5d77;}
 .add.event input::placeholder{color:#9fb2c4;}
