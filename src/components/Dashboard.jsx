@@ -20,7 +20,6 @@ const DEFAULT_PANELS = [
   { title: "Personal", accent: "#9B7BB5", position: 1 },
   { title: "Reminders", accent: "#DD6B53", position: 2 },
 ];
-const DEFAULT_HABITS = ["Meds", "Water", "Move", "Sleep by 11"];
 
 const markKey = (h, d) => `${h}|${d}`;
 
@@ -50,10 +49,6 @@ export default function Dashboard() {
     const panels = await getPanels();
     if (panels.length === 0) {
       await supabase.from("panels").insert(DEFAULT_PANELS);
-    }
-    const habits = await getHabits();
-    if (habits.length === 0) {
-      await supabase.from("habits").insert(DEFAULT_HABITS.map((name, i) => ({ name, position: i })));
     }
   }, []);
 
@@ -438,50 +433,59 @@ export default function Dashboard() {
               <span className="dot" style={{ background: "var(--done)" }} />
               <h3>Daily tracker</h3>
             </div>
-            <div className="habit-grid">
-              <div className="habit-corner" />
-              {weekDates.map((d, i) => (
-                <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
-              ))}
-              {model.habits.map((h, idx) => (
-                <React.Fragment key={h.id}>
-                  <div className="habit-name">
-                    {editMode
-                      ? <EditableName
-                          value={h.name}
-                          onSave={(n) => onRenameHabit(h.id, n)}
-                          onDelete={() => onDeleteHabit(h.id)}
-                          onUp={() => onMoveHabit(idx, -1)}
-                          onDown={() => onMoveHabit(idx, 1)}
-                          canUp={idx > 0}
-                          canDown={idx < model.habits.length - 1}
-                        />
-                      : h.name}
-                  </div>
-                  {weekDates.map((d) => {
-                    const iso = toISO(d);
-                    const on = model.marks.has(markKey(h.id, iso));
-                    return (
-                      <button
-                        key={iso}
-                        className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
-                        aria-label={`${h.name} ${iso}`}
-                        disabled={editMode}
-                        onClick={() => {
-                          setModel((m) => {
-                            const s = new Set(m.marks);
-                            on ? s.delete(markKey(h.id, iso)) : s.add(markKey(h.id, iso));
-                            return { ...m, marks: s };
-                          });
-                          toggleHabitMark(h.id, iso, !on).catch(() => {});
-                        }}
-                      />
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-            </div>
-            {editMode && <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />}
+            {model.habits.length === 0 ? (
+              <div className="habit-empty">
+                <p>Track habits that matter to you — stretches, water, reading, anything.</p>
+                <AddRow placeholder="+ add your first habit" onAdd={onAddHabit} />
+              </div>
+            ) : (
+              <>
+                <div className="habit-grid">
+                  <div className="habit-corner" />
+                  {weekDates.map((d, i) => (
+                    <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
+                  ))}
+                  {model.habits.map((h, idx) => (
+                    <React.Fragment key={h.id}>
+                      <div className="habit-name">
+                        {editMode
+                          ? <EditableName
+                              value={h.name}
+                              onSave={(n) => onRenameHabit(h.id, n)}
+                              onDelete={() => onDeleteHabit(h.id)}
+                              onUp={() => onMoveHabit(idx, -1)}
+                              onDown={() => onMoveHabit(idx, 1)}
+                              canUp={idx > 0}
+                              canDown={idx < model.habits.length - 1}
+                            />
+                          : h.name}
+                      </div>
+                      {weekDates.map((d) => {
+                        const iso = toISO(d);
+                        const on = model.marks.has(markKey(h.id, iso));
+                        return (
+                          <button
+                            key={iso}
+                            className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
+                            aria-label={`${h.name} ${iso}`}
+                            disabled={editMode}
+                            onClick={() => {
+                              setModel((m) => {
+                                const s = new Set(m.marks);
+                                on ? s.delete(markKey(h.id, iso)) : s.add(markKey(h.id, iso));
+                                return { ...m, marks: s };
+                              });
+                              toggleHabitMark(h.id, iso, !on).catch(() => {});
+                            }}
+                          />
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                </div>
+                {editMode && <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />}
+              </>
+            )}
           </div>
 
           {/* Brain dump */}
