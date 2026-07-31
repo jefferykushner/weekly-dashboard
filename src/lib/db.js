@@ -287,6 +287,82 @@ export async function setTaskMark(task_id, dt, patch) {
 }
 
 // ---------------------------------------------------------------
+//  Chores tracker
+// ---------------------------------------------------------------
+export async function getChores() {
+  const { data } = await supabase.from("chores").select("*").order("position");
+  return data || [];
+}
+
+export async function getChoreCompletions() {
+  // Fetch last 60 days of completions (covers monthly cycles comfortably)
+  const since = new Date();
+  since.setDate(since.getDate() - 60);
+  const sinceISO = toISO(since);
+  const { data } = await supabase
+    .from("chore_completions")
+    .select("chore_id, completed_at")
+    .gte("completed_at", sinceISO)
+    .order("completed_at", { ascending: false });
+  return data || [];
+}
+
+export async function addChore(name, frequency, position) {
+  const { data, error } = await supabase
+    .from("chores")
+    .insert({ name, frequency, position })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function renameChore(id, name) {
+  const { error } = await supabase.from("chores").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateChoreFreq(id, frequency) {
+  const { error } = await supabase.from("chores").update({ frequency }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteChore(id) {
+  const { error } = await supabase.from("chores").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function completeChore(chore_id) {
+  const { data, error } = await supabase
+    .from("chore_completions")
+    .insert({ chore_id, completed_at: toISO(new Date()) })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function uncompleteChore(chore_id, dateISO) {
+  // Remove the most recent completion on or after the given date
+  const { data } = await supabase
+    .from("chore_completions")
+    .select("id")
+    .eq("chore_id", chore_id)
+    .gte("completed_at", dateISO)
+    .order("completed_at", { ascending: false })
+    .limit(1);
+  if (data && data.length) {
+    await supabase.from("chore_completions").delete().eq("id", data[0].id);
+  }
+}
+
+export async function persistChoreOrder(orderedIds) {
+  await Promise.all(
+    orderedIds.map((id, i) => supabase.from("chores").update({ position: i }).eq("id", id))
+  );
+}
+
+// ---------------------------------------------------------------
 //  Word cloud
 // ---------------------------------------------------------------
 export async function getWords() {

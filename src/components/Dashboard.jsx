@@ -3,17 +3,21 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   getMonday, addDays, toISO, todayISO, DAY_NAMES, MONTHS, eventOccursOn,
+  isChoreComplete, choreCycleStart,
 } from "../lib/dates";
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
   addHabit, renameHabit, deleteHabit, moveToDay, moveToPanel, persistHabitOrder, setRecur,
   addPanel, renamePanel, deletePanel, persistPanelOrder, setTaskMark,
+  getChores, getChoreCompletions, addChore, renameChore, updateChoreFreq, deleteChore,
+  completeChore, uncompleteChore, persistChoreOrder,
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
 import ConfettiBurst from "./ConfettiBurst";
 import ProgressRing from "./ProgressRing";
+import ChoresPanel from "./ChoresPanel";
 import { buildSuggestions, suggestionFor } from "../lib/suggest";
 import { getWords } from "../lib/db";
 
@@ -43,6 +47,9 @@ export default function Dashboard() {
   // Celebration
   const [confetti, setConfetti] = useState(0);
   const [toasts, setToasts] = useState([]);
+  // Chores
+  const [chores, setChores] = useState([]);
+  const [choreComps, setChoreComps] = useState([]);
 
   const celebrate = (msg) => {
     setConfetti((c) => c + 1);
@@ -88,6 +95,10 @@ export default function Dashboard() {
     (async () => {
       await ensureSeed();
       await refresh();
+      // Load chores
+      const [ch, cc] = await Promise.all([getChores(), getChoreCompletions()]);
+      setChores(ch);
+      setChoreComps(cc);
     })();
   }, [refresh, ensureSeed]);
 
@@ -238,6 +249,55 @@ export default function Dashboard() {
     const reordered = arr.map((p, i) => ({ ...p, position: i }));
     setModel((m) => ({ ...m, panels: reordered }));
     persistPanelOrder(reordered.map((p) => p.id)).catch(() => {});
+  };
+
+  // ---- chore management ----
+  const choreIsDone = (c) => isChoreComplete(c, choreComps);
+  const onToggleChore = async (c, done) => {
+    if (done) {
+      const comp = await completeChore(c.id);
+      setChoreComps((cc) => [comp, ...cc]);
+      // celebrate if all chores now done
+      setTimeout(() => {
+        const allDone = chores.every((ch) =>
+          ch.id === c.id || isChoreComplete(ch, [...choreComps, comp])
+        );
+        if (allDone && chores.length > 0) celebrate("All chores done! 🏠");
+      }, 50);
+    } else {
+      const start = choreCycleStart(c.frequency);
+      await uncompleteChore(c.id, start);
+      setChoreComps((cc) => {
+        const idx = cc.findIndex((x) => x.chore_id === c.id && x.completed_at >= start);
+        return idx >= 0 ? [...cc.slice(0, idx), ...cc.slice(idx + 1)] : cc;
+      });
+    }
+  };
+  const onAddChore = async (name, frequency) => {
+    const pos = chores.length ? Math.max(...chores.map((c) => c.position || 0)) + 1 : 0;
+    const row = await addChore(name, frequency, pos);
+    setChores((ch) => [...ch, row]);
+  };
+  const onRenameChore = (id, name) => {
+    setChores((ch) => ch.map((c) => (c.id === id ? { ...c, name } : c)));
+    renameChore(id, name).catch(() => {});
+  };
+  const onDeleteChore = (id) => {
+    setChores((ch) => ch.filter((c) => c.id !== id));
+    deleteChore(id).catch(() => {});
+  };
+  const onChoreFreq = (id, frequency) => {
+    setChores((ch) => ch.map((c) => (c.id === id ? { ...c, frequency } : c)));
+    updateChoreFreq(id, frequency).catch(() => {});
+  };
+  const onMoveChore = (index, dir) => {
+    const arr = [...chores];
+    const j = index + dir;
+    if (j < 0 || j >= arr.length) return;
+    [arr[index], arr[j]] = [arr[j], arr[index]];
+    const reordered = arr.map((c, i) => ({ ...c, position: i }));
+    setChores(reordered);
+    persistChoreOrder(reordered.map((c) => c.id)).catch(() => {});
   };
 
   // ---- move a brain-dump item onto a day ----
@@ -558,6 +618,20 @@ export default function Dashboard() {
             </div>
             <AddRow placeholder="dump anything…" onAdd={addIn("inbox", { kind: "inbox" })} />
           </div>
+
+          {/* Chores tracker */}
+          <ChoresPanel
+            chores={chores}
+            completions={choreComps}
+            isDone={choreIsDone}
+            editMode={editMode}
+            onToggle={onToggleChore}
+            onAdd={onAddChore}
+            onRename={onRenameChore}
+            onDelete={onDeleteChore}
+            onFreq={onChoreFreq}
+            onMove={onMoveChore}
+          />
 
           {/* Your lists — renameable, reorderable */}
           {model.panels.map((p, idx) => (

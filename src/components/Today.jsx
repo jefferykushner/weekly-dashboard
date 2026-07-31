@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark, setTaskMark } from "../lib/db";
-import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn } from "../lib/dates";
+import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark, setTaskMark, getChores, getChoreCompletions, completeChore, uncompleteChore } from "../lib/db";
+import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn, isChoreComplete, choreCycleStart } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
 import ConfettiBurst from "./ConfettiBurst";
 import ProgressRing from "./ProgressRing";
@@ -12,6 +12,8 @@ export default function Today() {
   const [newTodo, setNewTodo] = useState("");
   const [showDone, setShowDone] = useState(false);
   const [confetti, setConfetti] = useState(0);
+  const [chores, setChores] = useState([]);
+  const [choreComps, setChoreComps] = useState([]);
   const [toasts, setToasts] = useState([]);
   const [newEvent, setNewEvent] = useState("");
 
@@ -30,6 +32,9 @@ export default function Today() {
       })
       .filter((t) => !t._removed);
     setData({ ...d, todos: [...d.todos, ...recs] });
+    const [ch, cc] = await Promise.all([getChores(), getChoreCompletions()]);
+    setChores(ch);
+    setChoreComps(cc);
   }, [iso]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -39,6 +44,25 @@ export default function Today() {
     const cid = Date.now();
     setToasts((t) => [...t, { id: cid, msg }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== cid)), 2800);
+  };
+
+  const choreIsDone = (c) => isChoreComplete(c, choreComps);
+  const toggleChore = async (c, done) => {
+    if (done) {
+      const comp = await completeChore(c.id);
+      setChoreComps((cc) => [comp, ...cc]);
+      setTimeout(() => {
+        const allDone = chores.every((ch) => ch.id === c.id || isChoreComplete(ch, [...choreComps, comp]));
+        if (allDone && chores.length > 0) celebrate("All chores done! 🏠");
+      }, 50);
+    } else {
+      const start = choreCycleStart(c.frequency);
+      await uncompleteChore(c.id, start);
+      setChoreComps((cc) => {
+        const idx = cc.findIndex((x) => x.chore_id === c.id && x.completed_at >= start);
+        return idx >= 0 ? [...cc.slice(0, idx), ...cc.slice(idx + 1)] : cc;
+      });
+    }
   };
 
   const toggle = (id, done) => {
@@ -182,6 +206,27 @@ export default function Today() {
                 onKeyDown={(e) => { if (e.key === "Enter") addTodo(); }} />
             </div>
           </section>
+
+          {chores.length > 0 && (
+            <section className="tday-section">
+              <div className="tday-label">
+                Chores
+                <span className="tday-count">{chores.filter(choreIsDone).length}/{chores.length}</span>
+              </div>
+              {chores.map((c) => {
+                const done = choreIsDone(c);
+                return (
+                  <button key={c.id} className={"thabit" + (done ? " on" : "")} onClick={() => toggleChore(c, !done)}>
+                    <span className={"tcheck" + (done ? " on" : "")}>
+                      <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
+                    </span>
+                    <span className="thabit-name">{c.name}</span>
+                    <span className="tchore-freq">{c.frequency}</span>
+                  </button>
+                );
+              })}
+            </section>
+          )}
 
           {data.habits.length > 0 && (
             <section className="tday-section">

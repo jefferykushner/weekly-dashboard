@@ -285,6 +285,7 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .thabit .tcheck{flex:0 0 auto;}
 .thabit-name{font-family:var(--body); font-size:16px; color:var(--surface);}
 .thabit.on .thabit-name{color:#9fcfb4;}
+.tchore-freq{font-family:var(--mono); font-size:9px; color:#8a909a; margin-left:auto;}
 
 /* ============ PHONE TAB BAR ============ */
 .phone-tabs{position:fixed; left:0; right:0; bottom:0; display:flex; background:#16181c; border-top:1px solid #2f323a; padding:8px 12px calc(8px + env(safe-area-inset-bottom));}
@@ -294,6 +295,29 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 /* keep capture content clear of the tab bar */
 .cap-root{padding-bottom:96px;}
 .cap-recent{padding-bottom:10px;}
+
+/* ============ CHORES TRACKER ============ */
+.chores-panel{background:#FFF8EC !important; border:1.5px solid rgba(181,138,60,.2);}
+.chore-empty p{font-family:var(--body); font-size:12px; color:var(--muted); margin:6px 0; line-height:1.4;}
+.chore-list{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column;}
+.chore-group{margin-bottom:6px;}
+.chore-group-label{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); padding:4px 0 2px;}
+.chore-row{display:flex; align-items:center; gap:7px; padding:4px 0;}
+.chore-row.done .chore-name{color:var(--muted); text-decoration:line-through;}
+.chore-check{flex:0 0 auto; width:18px; height:18px; border-radius:5px; border:1.6px solid #B58A3C; background:transparent; cursor:pointer; display:grid; place-items:center; padding:0; transition:.15s; position:relative;}
+.chore-check .tick{width:11px; height:11px; fill:none; stroke:#fff; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:18; stroke-dashoffset:18; transition:stroke-dashoffset .25s ease;}
+.chore-check.on{background:#B58A3C; border-color:#B58A3C; animation:checkPop .4s cubic-bezier(.2,.8,.3,1.4);}
+.chore-check.on .tick{stroke-dashoffset:0;}
+.chore-check.on::after{content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid #B58A3C; animation:checkRipple .55s ease-out forwards; pointer-events:none;}
+.chore-name{flex:1; font-family:var(--body); font-size:13px; color:var(--ink);}
+.chore-name-edit{flex:1; min-width:0; border:1px solid var(--line); border-radius:5px; background:#fff; font-family:var(--body); font-size:12px; padding:2px 5px; outline:none;}
+.chore-freq-tag{font-family:var(--mono); font-size:9px; color:#B58A3C; background:rgba(181,138,60,.1); border-radius:4px; padding:2px 6px; flex:0 0 auto;}
+.chore-freq-btn{border:1px solid var(--line); border-radius:5px; background:var(--surface); font-family:var(--mono); font-size:10px; color:var(--ink); padding:3px 7px; cursor:pointer;}
+.chore-freq-select{border:1px solid var(--line); border-radius:6px; background:var(--surface); font-family:var(--mono); font-size:10px; color:var(--ink); padding:4px 6px; outline:none; flex:0 0 auto;}
+.chore-add{display:flex; gap:6px; align-items:center; padding-top:4px; border-top:1px dashed transparent; margin-top:4px;}
+.chore-add:focus-within{border-top-color:var(--line);}
+.chore-add input{flex:1; border:none; background:transparent; font-family:var(--body); font-size:12px; color:var(--ink); outline:none; padding:3px 0;}
+.chore-add input::placeholder{color:var(--muted);}
 
 /* ============ WORDS (cloud) ============ */
 .words-root{position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; padding:18px 20px 0; overflow:hidden;}

@@ -43,3 +43,35 @@ export const RECUR_LABEL = {
   weekdays: "Weekdays",
   weekly: "Weekly",
 };
+
+// Chore cycle: is a chore "done" given its frequency and last completion?
+export const CHORE_FREQ_LABEL = {
+  daily: "Daily",
+  weekly: "Weekly",
+  biweekly: "Every 2 weeks",
+  monthly: "Monthly",
+};
+
+export function choreCycleStart(frequency, today) {
+  const d = today ? new Date(today + "T00:00:00") : new Date();
+  d.setHours(0, 0, 0, 0);
+  if (frequency === "daily") return toISO(d);
+  if (frequency === "weekly") return toISO(getMonday(d));
+  if (frequency === "biweekly") {
+    // 2-week window anchored to ISO week number (even weeks)
+    const mon = getMonday(d);
+    const jan1 = new Date(mon.getFullYear(), 0, 1);
+    const weekNum = Math.floor(((mon - jan1) / 86400000 + jan1.getDay() + 6) / 7);
+    if (weekNum % 2 !== 0) mon.setDate(mon.getDate() - 7);
+    return toISO(mon);
+  }
+  if (frequency === "monthly") return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`;
+  return toISO(d);
+}
+
+export function isChoreComplete(chore, completions) {
+  const cycleStart = choreCycleStart(chore.frequency);
+  return completions.some(
+    (c) => c.chore_id === chore.id && c.completed_at >= cycleStart
+  );
+}
