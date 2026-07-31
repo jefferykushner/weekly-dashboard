@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark, setTaskMark } from "../lib/db";
 import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
+import ConfettiBurst from "./ConfettiBurst";
+import ProgressRing from "./ProgressRing";
 import { GrowText } from "./parts";
 
 export default function Today() {
@@ -9,6 +11,8 @@ export default function Today() {
   const [data, setData] = useState(null);
   const [newTodo, setNewTodo] = useState("");
   const [showDone, setShowDone] = useState(false);
+  const [confetti, setConfetti] = useState(0);
+  const [toasts, setToasts] = useState([]);
   const [newEvent, setNewEvent] = useState("");
 
   const date = addDays(new Date(), offset);
@@ -30,11 +34,24 @@ export default function Today() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const celebrate = (msg) => {
+    setConfetti((c) => c + 1);
+    const cid = Date.now();
+    setToasts((t) => [...t, { id: cid, msg }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== cid)), 2800);
+  };
+
   const toggle = (id, done) => {
     setData((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, done } : t)) }));
     const item = data && data.todos.find((t) => t.id === id);
     if (item && item._recurring) setTaskMark(id, iso, { done }).catch(() => {});
     else setDone(id, done).catch(() => {});
+    if (done) setTimeout(() => {
+      setData((d) => {
+        if (d && d.todos.length > 0 && d.todos.every((t) => t.done)) celebrate("Day cleared! 🎉");
+        return d;
+      });
+    }, 50);
   };
   const editTodo = (id, body) => {
     setData((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, body } : t)) }));
@@ -77,6 +94,12 @@ export default function Today() {
       return { ...d, marked: s };
     });
     toggleHabitMark(id, iso, !on).catch(() => {});
+    if (!on) setTimeout(() => {
+      setData((d) => {
+        if (d && d.habits.length > 0 && d.habits.every((hb) => d.marked.has(hb.id) || hb.id === id)) celebrate("All habits done! 💪");
+        return d;
+      });
+    }, 50);
   };
 
   const heading = isToday
@@ -164,7 +187,7 @@ export default function Today() {
             <section className="tday-section">
               <div className="tday-label">
                 Daily tracker
-                <span className="tday-count">{data.habits.filter((h) => data.marked.has(h.id)).length}/{data.habits.length}</span>
+                <ProgressRing done={data.habits.filter((h) => data.marked.has(h.id)).length} total={data.habits.length} size={32} stroke={3} />
               </div>
               {data.habits.map((h) => {
                 const on = data.marked.has(h.id);
@@ -182,6 +205,12 @@ export default function Today() {
         </div>
       )}
 
+      <ConfettiBurst trigger={confetti} />
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map((t) => <div key={t.id} className="toast">{t.msg}</div>)}
+        </div>
+      )}
       <PhoneTabs active="today" />
     </div>
   );

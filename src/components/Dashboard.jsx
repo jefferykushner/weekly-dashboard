@@ -12,6 +12,8 @@ import {
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
+import ConfettiBurst from "./ConfettiBurst";
+import ProgressRing from "./ProgressRing";
 import { buildSuggestions, suggestionFor } from "../lib/suggest";
 import { getWords } from "../lib/db";
 
@@ -38,6 +40,16 @@ export default function Dashboard() {
   const [shuffle, setShuffle] = useState(0);
   const [topWords, setTopWords] = useState([]);
   const [writingTheme, setWritingTheme] = useState(false);
+  // Celebration
+  const [confetti, setConfetti] = useState(0);
+  const [toasts, setToasts] = useState([]);
+
+  const celebrate = (msg) => {
+    setConfetti((c) => c + 1);
+    const id = Date.now();
+    setToasts((t) => [...t, { id, msg }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2800);
+  };
 
   const mon = getMonday(addDays(new Date(), weekOffset * 7));
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(mon, i));
@@ -280,6 +292,23 @@ export default function Dashboard() {
     } else {
       toggleIn("dayInWeek")(it.id, done);
     }
+    // celebrate if this completes every to-do for a day
+    if (done) {
+      setTimeout(() => {
+        setModel((m) => {
+          if (!m) return m;
+          const dt = it._recurring ? it._dt : it.dt;
+          const plain = m.dayInWeek.filter((t) => t.dt === dt);
+          const recs = m.recurringTodos.filter((t) => eventOccursOn(t, dt)).map((t) => {
+            const mk = m.todoMarks.get(t.id + "|" + dt);
+            return { ...t, done: !!(mk && mk.done) };
+          });
+          const all = [...plain, ...recs];
+          if (all.length > 0 && all.every((t) => t.done)) celebrate("Day cleared! 🎉");
+          return m;
+        });
+      }, 50);
+    }
   };
 
   const removeDayItem = (it) => {
@@ -335,6 +364,7 @@ export default function Dashboard() {
       </div>
 
       <div className="page">
+        <div className="page-pinned">
         <header className="topbar">
           <div className="brand">
             <span className="kicker">the week of</span>
@@ -379,7 +409,9 @@ export default function Dashboard() {
             <button className="signout" onClick={() => supabase.auth.signOut()} title="Sign out">⏻</button>
           </div>
         </header>
+        </div>
 
+        <div className="page-scroll">
         <section className="week">
           {weekDates.map((d, i) => {
             const iso = toISO(d);
@@ -432,6 +464,10 @@ export default function Dashboard() {
             <div className="panel-head">
               <span className="dot" style={{ background: "var(--done)" }} />
               <h3>Daily tracker</h3>
+              {model.habits.length > 0 && (() => {
+                const todayDone = model.habits.filter((h) => model.marks.has(markKey(h.id, today))).length;
+                return <ProgressRing done={todayDone} total={model.habits.length} />;
+              })()}
             </div>
             {model.habits.length === 0 ? (
               <div className="habit-empty">
@@ -476,6 +512,16 @@ export default function Dashboard() {
                                 return { ...m, marks: s };
                               });
                               toggleHabitMark(h.id, iso, !on).catch(() => {});
+                              // celebrate if all habits are now done for today
+                              if (!on && iso === today) {
+                                setTimeout(() => {
+                                  setModel((m) => {
+                                    const allDone = m.habits.every((hb) => m.marks.has(markKey(hb.id, today)));
+                                    if (allDone && m.habits.length > 0) celebrate("All habits done! 💪");
+                                    return m;
+                                  });
+                                }, 50);
+                              }
                             }}
                           />
                         );
@@ -539,7 +585,15 @@ export default function Dashboard() {
             <button className="panel add-panel" onClick={onAddPanel}>＋ add list</button>
           )}
         </section>
+        </div>{/* close page-scroll */}
       </div>
+
+      <ConfettiBurst trigger={confetti} />
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map((t) => <div key={t.id} className="toast">{t.msg}</div>)}
+        </div>
+      )}
 
       <RolloverNudge
         items={overdue}
