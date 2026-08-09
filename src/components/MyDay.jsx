@@ -2,17 +2,25 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   loadDay, addTask, setDone, setBody, delTask, toggleHabitMark, setTaskMark,
   getChores, getChoreCompletions, completeChore, uncompleteChore,
+  getBills, payBill, getInvoiceUrl,
   getPanels,
 } from "../lib/db";
 import { supabase } from "../lib/supabase";
 import {
   addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn,
-  isChoreComplete, choreCycleStart, CHORE_FREQ_LABEL,
+  isChoreComplete, choreCycleStart, CHORE_FREQ_LABEL, billUrgency, BILL_RECUR_LABEL,
 } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
 import ConfettiBurst from "./ConfettiBurst";
 import ProgressRing from "./ProgressRing";
 import { GrowText } from "./parts";
+
+function fmtDateM(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  const ms = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return ms[d.getMonth()] + " " + d.getDate();
+}
 
 export default function MyDay() {
   const [offset, setOffset] = useState(0);
@@ -23,6 +31,7 @@ export default function MyDay() {
   const [confetti, setConfetti] = useState(0);
   const [toasts, setToasts] = useState([]);
   // Chores
+  const [bills, setBills] = useState([]);
   const [chores, setChores] = useState([]);
   const [choreComps, setChoreComps] = useState([]);
   // Panels (project lists)
@@ -56,6 +65,7 @@ export default function MyDay() {
     const [ch, cc] = await Promise.all([getChores(), getChoreCompletions()]);
     setChores(ch);
     setChoreComps(cc);
+    setBills(await getBills());
     // Panels + items
     const pnls = await getPanels();
     setPanels(pnls);
@@ -125,6 +135,15 @@ export default function MyDay() {
       });
     }, 50);
   };
+  const onPayBill = async (id) => {
+    await payBill(id);
+    setBills(await getBills());
+    celebrate("Bill paid! \u{1F4B0}");
+  };
+  const onViewInvoice = async (path) => {
+    const url = await getInvoiceUrl(path);
+    window.open(url, "_blank");
+  };
   const choreIsDone = (c) => isChoreComplete(c, choreComps);
   const toggleChore = async (c, done) => {
     if (done) {
@@ -178,6 +197,36 @@ export default function MyDay() {
         <div className="myday-loading">loading&hellip;</div>
       ) : (
         <div className="myday-body">
+
+          {/* ---- Bills due soon ---- */}
+          {(() => {
+            const urgent = bills.filter((b) => !b.paid && ["overdue","today","soon"].includes(billUrgency(b)));
+            if (!urgent.length) return null;
+            return (
+              <section className="myday-section">
+                <div className="myday-label" style={{color:"var(--urgent)"}}>Bills due</div>
+                {urgent.map((b) => {
+                  const urg = billUrgency(b);
+                  return (
+                    <div className="mbill" key={b.id}>
+                      <div className={"mbill-urg " + urg} />
+                      <div className="mbill-info">
+                        <span className="mbill-name">{b.name}</span>
+                        <span className="mbill-meta">
+                          {fmtDateM(b.due_date)}{b.amount != null && " \u00b7 $" + Number(b.amount).toFixed(2)}
+                          {b.recur !== "none" && " \u00b7 " + BILL_RECUR_LABEL[b.recur]}
+                        </span>
+                      </div>
+                      {b.file_path && <button className="mbill-file" onClick={() => onViewInvoice(b.file_path)} title="View invoice">📄</button>}
+                      <button className="mbill-pay" onClick={() => onPayBill(b.id)} title="Mark paid">
+                        <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
+                      </button>
+                    </div>
+                  );
+                })}
+              </section>
+            );
+          })()}
 
           {/* ---- Events ---- */}
           {todayEvents.length > 0 && (

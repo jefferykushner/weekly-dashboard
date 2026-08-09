@@ -310,6 +310,55 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .cap-root{padding-bottom:96px;}
 .cap-recent{padding-bottom:10px;}
 
+/* ============ BILLS TRACKER ============ */
+.bills-panel{background:#FFF5F2 !important; border:1.5px solid rgba(221,107,83,.15);}
+.bills-badge{margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--urgent); background:rgba(221,107,83,.1); border-radius:4px; padding:2px 7px;}
+.bills-list{flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:2px;}
+.bill-row{display:flex; align-items:center; gap:8px; padding:6px 4px; border-radius:6px; transition:background .15s; position:relative;}
+.bill-row.bill-overdue{background:rgba(221,107,83,.08);}
+.bill-row.bill-today{background:rgba(224,163,62,.1); animation:billPulse 2s ease-in-out infinite;}
+.bill-row.bill-soon{background:rgba(224,163,62,.06);}
+.bill-row.bill-paid{opacity:.55;}
+@keyframes billPulse{0%,100%{box-shadow:none;}50%{box-shadow:inset 0 0 0 1.5px var(--today);}}
+.bill-row.bill-dragover{background:rgba(79,158,120,.12); outline:2px dashed var(--done); outline-offset:-2px;}
+.bill-pay{flex:0 0 auto; width:18px; height:18px; border-radius:5px; border:1.6px solid var(--urgent); background:transparent; cursor:pointer; display:grid; place-items:center; padding:0; position:relative; transition:.15s;}
+.bill-pay .tick{width:11px; height:11px; fill:none; stroke:#fff; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:18; stroke-dashoffset:18; transition:stroke-dashoffset .25s;}
+.bill-pay.on{background:var(--done); border-color:var(--done); animation:checkPop .4s cubic-bezier(.2,.8,.3,1.4);}
+.bill-pay.on .tick{stroke-dashoffset:0;}
+.bill-pay.on::after{content:''; position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--done); animation:checkRipple .55s ease-out forwards; pointer-events:none;}
+.bill-info{flex:1; min-width:0; display:flex; flex-direction:column; gap:1px;}
+.bill-name{font-family:var(--body); font-size:13px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.bill-paid .bill-name{text-decoration:line-through; color:var(--muted);}
+.bill-meta{font-family:var(--mono); font-size:10px; color:var(--muted);}
+.bill-actions{display:flex; gap:4px; align-items:center; flex:0 0 auto;}
+.bill-file{border:none; background:transparent; font-size:14px; cursor:pointer; padding:2px; opacity:.5; transition:.15s;}
+.bill-file:hover{opacity:1;}
+.bill-file.has{opacity:.85;}
+.bill-urg-tag{position:absolute; right:4px; top:-1px; font-family:var(--mono); font-size:8px; letter-spacing:.05em; text-transform:uppercase; background:var(--urgent); color:#fff; border-radius:3px; padding:1px 5px;}
+.bill-urg-tag.today{background:var(--today); color:#3a2a08;}
+.bill-urg-tag.soon{background:rgba(224,163,62,.7); color:#3a2a08;}
+.bill-add-form{display:flex; flex-direction:column; gap:5px; padding-top:6px; border-top:1px dashed var(--line); margin-top:4px;}
+.bill-add-form input,.bill-add-form select{border:1px solid var(--line); border-radius:5px; background:#fff; font-family:var(--body); font-size:12px; padding:5px 7px; outline:none;}
+.bill-add-form input:focus,.bill-add-form select:focus{border-color:var(--today);}
+.bill-add-btns{display:flex; gap:6px;}
+.bill-add-go{border:none; background:var(--urgent); color:#fff; font-family:var(--display); font-weight:600; font-size:12px; padding:6px 14px; border-radius:6px; cursor:pointer;}
+.bill-add-cancel{border:none; background:transparent; color:var(--muted); font-family:var(--mono); font-size:11px; cursor:pointer;}
+.bill-add-btn{width:100%; border:none; border-top:1px dashed transparent; background:transparent; font-family:var(--body); font-size:12px; color:var(--muted); cursor:pointer; padding:5px 0; margin-top:4px; text-align:left;}
+.bill-add-btn:hover{color:var(--ink);}
+
+/* phone bill rows */
+.mbill{display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid #26282e;}
+.mbill-urg{width:4px; align-self:stretch; border-radius:2px; flex:0 0 auto;}
+.mbill-urg.overdue{background:var(--urgent);}
+.mbill-urg.today{background:var(--today);}
+.mbill-urg.soon{background:rgba(224,163,62,.5);}
+.mbill-info{flex:1; min-width:0;}
+.mbill-name{font-family:var(--body); font-size:15px; font-weight:600; color:var(--surface); display:block;}
+.mbill-meta{font-family:var(--mono); font-size:11px; color:#8a909a; display:block; margin-top:2px;}
+.mbill-pay{flex:0 0 auto; width:28px; height:28px; border-radius:7px; border:2px solid var(--urgent); background:transparent; display:grid; place-items:center; cursor:pointer; padding:0; position:relative;}
+.mbill-pay svg{width:16px; height:16px; fill:none; stroke:#fff; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:18; stroke-dashoffset:18; transition:stroke-dashoffset .2s;}
+.mbill-file{border:none; background:transparent; font-size:16px; cursor:pointer; flex:0 0 auto;}
+
 /* ============ CHORES TRACKER ============ */
 .chores-panel{background:#FFF8EC !important; border:1.5px solid rgba(181,138,60,.2);}
 .chore-empty p{font-family:var(--body); font-size:12px; color:var(--muted); margin:6px 0; line-height:1.4;}

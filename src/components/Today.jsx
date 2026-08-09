@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark, setTaskMark, getChores, getChoreCompletions, completeChore, uncompleteChore } from "../lib/db";
-import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn, isChoreComplete, choreCycleStart } from "../lib/dates";
+import { loadDay, addTask, setDone, setBody, delTask, toggleHabitMark } from "../lib/db";
+import { addDays, toISO, DAY_NAMES, MONTHS, eventOccursOn } from "../lib/dates";
 import PhoneTabs from "./PhoneTabs";
-import ConfettiBurst from "./ConfettiBurst";
-import ProgressRing from "./ProgressRing";
 import { GrowText } from "./parts";
 
 export default function Today() {
@@ -11,10 +9,6 @@ export default function Today() {
   const [data, setData] = useState(null);
   const [newTodo, setNewTodo] = useState("");
   const [showDone, setShowDone] = useState(false);
-  const [confetti, setConfetti] = useState(0);
-  const [chores, setChores] = useState([]);
-  const [choreComps, setChoreComps] = useState([]);
-  const [toasts, setToasts] = useState([]);
   const [newEvent, setNewEvent] = useState("");
 
   const date = addDays(new Date(), offset);
@@ -22,60 +16,14 @@ export default function Today() {
   const isToday = offset === 0;
 
   const refresh = useCallback(async () => {
-    const d = await loadDay(iso);
-    const markMap = new Map(d.todoMarks.map((m) => [m.task_id, m]));
-    const recs = d.recTodos
-      .filter((t) => eventOccursOn(t, iso))
-      .map((t) => {
-        const mk = markMap.get(t.id);
-        return { ...t, done: !!(mk && mk.done), _recurring: true, _removed: !!(mk && mk.removed) };
-      })
-      .filter((t) => !t._removed);
-    setData({ ...d, todos: [...d.todos, ...recs] });
-    const [ch, cc] = await Promise.all([getChores(), getChoreCompletions()]);
-    setChores(ch);
-    setChoreComps(cc);
+    setData(await loadDay(iso));
   }, [iso]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const celebrate = (msg) => {
-    setConfetti((c) => c + 1);
-    const cid = Date.now();
-    setToasts((t) => [...t, { id: cid, msg }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== cid)), 2800);
-  };
-
-  const choreIsDone = (c) => isChoreComplete(c, choreComps);
-  const toggleChore = async (c, done) => {
-    if (done) {
-      const comp = await completeChore(c.id);
-      setChoreComps((cc) => [comp, ...cc]);
-      setTimeout(() => {
-        const allDone = chores.every((ch) => ch.id === c.id || isChoreComplete(ch, [...choreComps, comp]));
-        if (allDone && chores.length > 0) celebrate("All chores done! 🏠");
-      }, 50);
-    } else {
-      const start = choreCycleStart(c.frequency);
-      await uncompleteChore(c.id, start);
-      setChoreComps((cc) => {
-        const idx = cc.findIndex((x) => x.chore_id === c.id && x.completed_at >= start);
-        return idx >= 0 ? [...cc.slice(0, idx), ...cc.slice(idx + 1)] : cc;
-      });
-    }
-  };
-
   const toggle = (id, done) => {
     setData((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, done } : t)) }));
-    const item = data && data.todos.find((t) => t.id === id);
-    if (item && item._recurring) setTaskMark(id, iso, { done }).catch(() => {});
-    else setDone(id, done).catch(() => {});
-    if (done) setTimeout(() => {
-      setData((d) => {
-        if (d && d.todos.length > 0 && d.todos.every((t) => t.done)) celebrate("Day cleared! 🎉");
-        return d;
-      });
-    }, 50);
+    setDone(id, done).catch(() => {});
   };
   const editTodo = (id, body) => {
     setData((d) => ({ ...d, todos: d.todos.map((t) => (t.id === id ? { ...t, body } : t)) }));
@@ -86,10 +34,8 @@ export default function Today() {
     setBody(id, body).catch(() => {});
   };
   const removeTodo = (id) => {
-    const item = data && data.todos.find((t) => t.id === id);
     setData((d) => ({ ...d, todos: d.todos.filter((t) => t.id !== id) }));
-    if (item && item._recurring) setTaskMark(id, iso, { removed: true }).catch(() => {});
-    else delTask(id).catch(() => {});
+    delTask(id).catch(() => {});
   };
   const removeEvent = (id) => {
     setData((d) => ({ ...d, events: d.events.filter((t) => t.id !== id) }));
@@ -118,12 +64,6 @@ export default function Today() {
       return { ...d, marked: s };
     });
     toggleHabitMark(id, iso, !on).catch(() => {});
-    if (!on) setTimeout(() => {
-      setData((d) => {
-        if (d && d.habits.length > 0 && d.habits.every((hb) => d.marked.has(hb.id) || hb.id === id)) celebrate("All habits done! 💪");
-        return d;
-      });
-    }, 50);
   };
 
   const heading = isToday
@@ -180,7 +120,6 @@ export default function Today() {
                   <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
                 </button>
                 <GrowText className="ttodo-text" value={t.body} onChange={(v) => editTodo(t.id, v)} />
-                {t._recurring && <span className="trecur" title="Repeats — × skips just this day">↻</span>}
                 <button className="tdel" onClick={() => removeTodo(t.id)} aria-label="Delete">×</button>
               </div>
             ))}
@@ -207,32 +146,11 @@ export default function Today() {
             </div>
           </section>
 
-          {chores.length > 0 && (
-            <section className="tday-section">
-              <div className="tday-label">
-                Chores
-                <span className="tday-count">{chores.filter(choreIsDone).length}/{chores.length}</span>
-              </div>
-              {chores.map((c) => {
-                const done = choreIsDone(c);
-                return (
-                  <button key={c.id} className={"thabit" + (done ? " on" : "")} onClick={() => toggleChore(c, !done)}>
-                    <span className={"tcheck" + (done ? " on" : "")}>
-                      <svg viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-8" /></svg>
-                    </span>
-                    <span className="thabit-name">{c.name}</span>
-                    <span className="tchore-freq">{c.frequency}</span>
-                  </button>
-                );
-              })}
-            </section>
-          )}
-
           {data.habits.length > 0 && (
             <section className="tday-section">
               <div className="tday-label">
                 Daily tracker
-                <ProgressRing done={data.habits.filter((h) => data.marked.has(h.id)).length} total={data.habits.length} size={32} stroke={3} />
+                <span className="tday-count">{data.habits.filter((h) => data.marked.has(h.id)).length}/{data.habits.length}</span>
               </div>
               {data.habits.map((h) => {
                 const on = data.marked.has(h.id);
@@ -250,12 +168,6 @@ export default function Today() {
         </div>
       )}
 
-      <ConfettiBurst trigger={confetti} />
-      {toasts.length > 0 && (
-        <div className="toast-container">
-          {toasts.map((t) => <div key={t.id} className="toast">{t.msg}</div>)}
-        </div>
-      )}
       <PhoneTabs active="today" />
     </div>
   );

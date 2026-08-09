@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import {
   getMonday, addDays, toISO, todayISO, DAY_NAMES, MONTHS, eventOccursOn,
-  isChoreComplete, choreCycleStart,
+  isChoreComplete, choreCycleStart, billUrgency,
 } from "../lib/dates";
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
@@ -12,12 +12,14 @@ import {
   addPanel, renamePanel, deletePanel, persistPanelOrder, setTaskMark,
   getChores, getChoreCompletions, addChore, renameChore, updateChoreFreq, deleteChore,
   completeChore, uncompleteChore, persistChoreOrder,
+  getBills, addBill, payBill, unpayBill, deleteBill, uploadInvoice, getInvoiceUrl,
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
 import ConfettiBurst from "./ConfettiBurst";
 import ProgressRing from "./ProgressRing";
 import ChoresPanel from "./ChoresPanel";
+import BillsPanel from "./BillsPanel";
 import { buildSuggestions, suggestionFor } from "../lib/suggest";
 import { getWords } from "../lib/db";
 
@@ -50,6 +52,8 @@ export default function Dashboard() {
   // Chores
   const [chores, setChores] = useState([]);
   const [choreComps, setChoreComps] = useState([]);
+  // Bills
+  const [bills, setBills] = useState([]);
 
   const celebrate = (msg) => {
     setConfetti((c) => c + 1);
@@ -99,6 +103,8 @@ export default function Dashboard() {
       const [ch, cc] = await Promise.all([getChores(), getChoreCompletions()]);
       setChores(ch);
       setChoreComps(cc);
+      // Bills
+      setBills(await getBills());
     })();
   }, [refresh, ensureSeed]);
 
@@ -298,6 +304,27 @@ export default function Dashboard() {
     const reordered = arr.map((c, i) => ({ ...c, position: i }));
     setChores(reordered);
     persistChoreOrder(reordered.map((c) => c.id)).catch(() => {});
+  };
+
+  // ---- bill management ----
+  const onAddBill = async (b) => { const row = await addBill(b); setBills((bs) => [...bs, row]); };
+  const onPayBill = async (id) => {
+    await payBill(id);
+    setBills(await getBills());
+    celebrate("Bill paid! 💰");
+  };
+  const onUnpayBill = async (id) => { await unpayBill(id); setBills(await getBills()); };
+  const onDeleteBill = async (id) => {
+    if (!window.confirm("Delete this bill?")) return;
+    await deleteBill(id); setBills((bs) => bs.filter((b) => b.id !== id));
+  };
+  const onUploadInvoice = async (id, file) => {
+    await uploadInvoice(id, file);
+    setBills(await getBills());
+  };
+  const onViewInvoice = async (path) => {
+    const url = await getInvoiceUrl(path);
+    window.open(url, "_blank");
   };
 
   // ---- move a brain-dump item onto a day ----
@@ -618,6 +645,19 @@ export default function Dashboard() {
             </div>
             <AddRow placeholder="dump anything…" onAdd={addIn("inbox", { kind: "inbox" })} />
           </div>
+
+          {/* Bills tracker */}
+          <BillsPanel
+            bills={bills}
+            editMode={editMode}
+            onAdd={onAddBill}
+            onPay={onPayBill}
+            onUnpay={onUnpayBill}
+            onDelete={onDeleteBill}
+            onUpdate={() => {}}
+            onUpload={onUploadInvoice}
+            onViewFile={onViewInvoice}
+          />
 
           {/* Chores tracker */}
           <ChoresPanel

@@ -287,6 +287,82 @@ export async function setTaskMark(task_id, dt, patch) {
 }
 
 // ---------------------------------------------------------------
+//  Bills tracker
+// ---------------------------------------------------------------
+export async function getBills() {
+  const { data } = await supabase.from("bills").select("*").order("due_date");
+  return data || [];
+}
+
+export async function addBill({ name, amount, due_date, recur = "none" }) {
+  const { data, error } = await supabase
+    .from("bills")
+    .insert({ name, amount, due_date, recur })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateBill(id, patch) {
+  const { error } = await supabase.from("bills").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteBill(id) {
+  // also delete any uploaded file
+  const { data: bill } = await supabase.from("bills").select("file_path").eq("id", id).maybeSingle();
+  if (bill && bill.file_path) {
+    await supabase.storage.from("invoices").remove([bill.file_path]);
+  }
+  const { error } = await supabase.from("bills").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Mark paid; if recurring, spawn next occurrence.
+export async function payBill(id) {
+  const { data: bill } = await supabase.from("bills").select("*").eq("id", id).single();
+  if (!bill) return;
+  await supabase.from("bills").update({ paid: true, paid_at: toISO(new Date()) }).eq("id", id);
+  // Spawn next if recurring
+  if (bill.recur !== "none") {
+    const d = new Date(bill.due_date + "T00:00:00");
+    if (bill.recur === "monthly") d.setMonth(d.getMonth() + 1);
+    else if (bill.recur === "quarterly") d.setMonth(d.getMonth() + 3);
+    else if (bill.recur === "yearly") d.setFullYear(d.getFullYear() + 1);
+    await supabase.from("bills").insert({
+      name: bill.name,
+      amount: bill.amount,
+      due_date: toISO(d),
+      recur: bill.recur,
+      notes: bill.notes,
+      position: bill.position,
+    });
+  }
+}
+
+export async function unpayBill(id) {
+  await supabase.from("bills").update({ paid: false, paid_at: null }).eq("id", id);
+}
+
+// Upload invoice PDF/image to Supabase Storage
+export async function uploadInvoice(billId, file) {
+  const ext = file.name.split(".").pop() || "pdf";
+  const path = `${(await supabase.auth.getUser()).data.user.id}/${billId}.${ext}`;
+  const { error } = await supabase.storage.from("invoices").upload(path, file, { upsert: true });
+  if (error) throw error;
+  await supabase.from("bills").update({ file_path: path }).eq("id", billId);
+  return path;
+}
+
+// Get a temporary signed URL for viewing an invoice
+export async function getInvoiceUrl(filePath) {
+  const { data, error } = await supabase.storage.from("invoices").createSignedUrl(filePath, 3600);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
+// ---------------------------------------------------------------
 //  Chores tracker
 // ---------------------------------------------------------------
 export async function getChores() {

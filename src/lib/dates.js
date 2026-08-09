@@ -45,6 +45,24 @@ export const RECUR_LABEL = {
 };
 
 // Chore cycle: is a chore "done" given its frequency and last completion?
+export const BILL_RECUR_LABEL = {
+  none: "One-time",
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  yearly: "Yearly",
+};
+
+// Returns urgency level: 'overdue' | 'today' | 'soon' (within 2 days) | 'upcoming' | 'paid'
+export function billUrgency(bill) {
+  if (bill.paid) return "paid";
+  const today = todayISO();
+  if (bill.due_date < today) return "overdue";
+  if (bill.due_date === today) return "today";
+  const soon = toISO(addDays(new Date(), 2));
+  if (bill.due_date <= soon) return "soon";
+  return "upcoming";
+}
+
 export const CHORE_FREQ_LABEL = {
   daily: "Daily",
   weekly: "Weekly",
