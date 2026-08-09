@@ -4,7 +4,7 @@ import { supabase } from "./lib/supabase";
 import Login from "./components/Login";
 import Dashboard from "./components/Dashboard";
 import Capture from "./components/Capture";
-import Today from "./components/Today";
+import MyDay from "./components/MyDay";
 import Words from "./components/Words";
 
 function useIsPhone() {
@@ -21,7 +21,7 @@ function Home() {
   const isPhone = useIsPhone();
   const loc = useLocation();
   // On a phone, the dashboard cannot honor "one screen, no scroll" — show the Today glance.
-  if (isPhone && loc.pathname === "/") return <Navigate to="/today" replace />;
+  if (isPhone && loc.pathname === "/") return <Navigate to="/capture" replace />;
   return <Dashboard />;
 }
 
@@ -44,7 +44,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
-      <Route path="/today" element={<Today />} />
+      <Route path="/myday" element={<MyDay />} />
+      <Route path="/today" element={<Navigate to="/myday" replace />} />
       <Route path="/capture" element={<Capture />} />
       <Route path="/words" element={<Words />} />
       <Route path="*" element={<Navigate to="/" replace />} />

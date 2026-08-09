@@ -1,7 +1,7 @@
 {
   "name": "Weekly Dashboard",
   "short_name": "Dashboard",
-  "start_url": "/today",
+  "start_url": "/capture",
   "scope": "/",
   "display": "standalone",
   "background_color": "#FAF6E9",

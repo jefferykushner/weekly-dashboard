@@ -242,20 +242,21 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .cap-date input{flex:1; border:1.5px solid #3a3d44; border-radius:10px; background:#26282e; color:var(--surface); font-family:var(--body); font-size:16px; padding:12px 14px; outline:none;}
 .cap-date input:focus{border-color:var(--today);}
 
-/* ============ PHONE: TODAY VIEW ============ */
-.tday-root{position:fixed; inset:0; background:var(--bg); color:var(--surface); display:flex; flex-direction:column; padding:max(18px,env(safe-area-inset-top)) 16px 0;}
-.tday-head{display:flex; align-items:flex-end; justify-content:space-between; padding-bottom:14px; border-bottom:1px solid #2f323a; margin-bottom:6px;}
-.tday-title{display:flex; flex-direction:column;}
-.tday-h{font-family:var(--display); font-weight:700; font-size:26px; line-height:1.05; color:var(--today);}
-.tday-date{font-family:var(--mono); font-size:12px; color:#9aa0aa; margin-top:3px;}
-.tday-nav{display:flex; gap:6px; align-items:center;}
-.tday-nav button{font-family:var(--mono); font-size:15px; border:1.5px solid #3a3d44; background:#26282e; color:var(--surface); border-radius:999px; width:38px; height:38px; cursor:pointer;}
-.tday-now{width:auto !important; font-size:12px !important; padding:0 12px;}
-.tday-loading{color:#7a7f88; font-family:var(--mono); padding:30px 0; text-align:center;}
-.tday-body{flex:1; min-height:0; overflow-y:auto; padding:10px 0 96px;}
-.tday-section{margin-bottom:22px;}
-.tday-label{display:flex; align-items:center; font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#7a7f88; margin-bottom:8px;}
-.tday-count{margin-left:auto; color:var(--done);}
+/* ============ PHONE: MY DAY VIEW ============ */
+.myday-root{position:fixed; inset:0; background:var(--bg); color:var(--surface); display:flex; flex-direction:column; padding:max(18px,env(safe-area-inset-top)) 16px 0; overflow:hidden;}
+.myday-head{display:flex; align-items:flex-end; justify-content:space-between; padding-bottom:14px; border-bottom:1px solid #2f323a; margin-bottom:2px; flex:0 0 auto;}
+.myday-title{display:flex; flex-direction:column;}
+.myday-h{font-family:var(--display); font-weight:700; font-size:26px; line-height:1.05; color:var(--today);}
+.myday-date{font-family:var(--mono); font-size:12px; color:#9aa0aa; margin-top:3px;}
+.myday-nav{display:flex; gap:6px; align-items:center;}
+.myday-nav button{font-family:var(--mono); font-size:15px; border:1.5px solid #3a3d44; background:#26282e; color:var(--surface); border-radius:999px; width:38px; height:38px; cursor:pointer;}
+.myday-now{width:auto !important; font-size:12px !important; padding:0 12px;}
+.myday-loading{color:#7a7f88; font-family:var(--mono); padding:30px 0; text-align:center;}
+.myday-body{flex:1; min-height:0; overflow-y:auto; padding:6px 0 96px;}
+.myday-section{margin-bottom:18px;}
+.myday-label{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#7a7f88; margin-bottom:8px; padding-top:4px;}
+.myday-count{margin-left:auto; color:var(--done);}
+.myday-add-event{margin-bottom:8px;}
 
 .tevent{display:flex; align-items:flex-start; gap:11px; padding:11px 0; border-bottom:1px solid #26282e;}
 .tedot{width:9px; height:9px; margin-top:7px; border-radius:50%; background:#7fa6c9; flex:0 0 auto;}
@@ -286,6 +287,19 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .thabit-name{font-family:var(--body); font-size:16px; color:var(--surface);}
 .thabit.on .thabit-name{color:#9fcfb4;}
 .tchore-freq{font-family:var(--mono); font-size:9px; color:#8a909a; margin-left:auto;}
+
+/* collapsed project lists on phone */
+.myday-list{margin-bottom:4px;}
+.myday-list-head{display:flex; align-items:center; gap:10px; width:100%; padding:12px 0; border:none; border-bottom:1px solid #26282e; background:transparent; cursor:pointer; text-align:left; color:var(--surface);}
+.myday-list-dot{width:8px; height:8px; border-radius:2px; flex:0 0 auto;}
+.myday-list-title{flex:1; font-family:var(--display); font-size:16px; font-weight:600;}
+.myday-list-count{font-family:var(--mono); font-size:11px; color:var(--done);}
+.myday-list-arrow{font-size:12px; color:#6b7079; flex:0 0 auto;}
+.myday-list-items{padding:6px 0 6px 18px;}
+.myday-list-items .ttodo{padding:8px 0;}
+.myday-list-items .ttodo-text{color:var(--surface); font-size:15px;}
+.myday-list-done{font-family:var(--mono); font-size:10px; color:#6b7079; padding:4px 0;}
+.myday-list-empty{font-family:var(--mono); font-size:10px; color:#4a4f58; padding:4px 0;}
 
 /* ============ PHONE TAB BAR ============ */
 .phone-tabs{position:fixed; left:0; right:0; bottom:0; display:flex; background:#16181c; border-top:1px solid #2f323a; padding:8px 12px calc(8px + env(safe-area-inset-bottom));}
