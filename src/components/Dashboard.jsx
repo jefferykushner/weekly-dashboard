@@ -498,7 +498,7 @@ export default function Dashboard() {
         </header>
         </div>
 
-        <div className="page-scroll">
+        <div className="page-content">
         <section className="week">
           {weekDates.map((d, i) => {
             const iso = toISO(d);
@@ -699,7 +699,7 @@ export default function Dashboard() {
             <button className="panel add-panel" onClick={onAddPanel}>＋ add list</button>
           )}
         </section>
-        </div>{/* close page-scroll */}
+        </div>{/* close page-content */}
       </div>
 
       <ConfettiBurst trigger={confetti} />
