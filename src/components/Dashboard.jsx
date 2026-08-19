@@ -584,82 +584,86 @@ export default function Dashboard() {
                 <div className="panel-head">
                   <span className="dot" style={{ background: "var(--done)" }} />
                   <h3>{trackerTitle}</h3>
-                  {filtered.length > 0 && <ProgressRing done={todayDone} total={filtered.length} />}
+                  {filtered.length > 0 && !editMode && <ProgressRing done={todayDone} total={filtered.length} />}
                 </div>
-                {filtered.length === 0 ? (
+                {editMode ? (
+                  /* ---- EDIT MODE: clean list, no grid ---- */
+                  <div className="habit-edit-list">
+                    {filtered.map((h) => {
+                      const idx = model.habits.indexOf(h);
+                      return (
+                        <div className="habit-edit-row" key={h.id}>
+                          <span className="reorder">
+                            <button onClick={() => onMoveHabit(idx, -1)} disabled={idx <= 0} aria-label="Up">▲</button>
+                            <button onClick={() => onMoveHabit(idx, 1)} disabled={idx >= model.habits.length - 1} aria-label="Down">▼</button>
+                          </span>
+                          <input
+                            className="habit-edit-name"
+                            defaultValue={h.name}
+                            onBlur={(e) => { if (e.target.value.trim() && e.target.value !== h.name) onRenameHabit(h.id, e.target.value.trim()); }}
+                            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                          />
+                          <select className="habit-edit-cat" value={h.category || "personal"} onChange={(e) => onHabitCategory(h.id, e.target.value)}>
+                            <option value="personal">🏠 Personal</option>
+                            <option value="work">💼 Work</option>
+                            <option value="both">◆ Both</option>
+                          </select>
+                          <button className="del" onClick={() => onDeleteHabit(h.id)} aria-label="Delete">×</button>
+                        </div>
+                      );
+                    })}
+                    <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />
+                  </div>
+                ) : filtered.length === 0 ? (
                   <div className="habit-empty">
                     <p>Track habits that matter to you — stretches, water, reading, anything.</p>
                     <AddRow placeholder="+ add your first habit" onAdd={onAddHabit} />
                   </div>
                 ) : (
-                  <>
-                    <div className="habit-grid">
-                      <div className="habit-corner" />
-                      {weekDates.map((d, i) => (
-                        <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
-                      ))}
-                      {filtered.map((h) => {
-                        const idx = model.habits.indexOf(h);
-                        return (
-                          <React.Fragment key={h.id}>
-                            <div className="habit-name">
-                              {editMode
-                                ? <EditableName
-                                    value={h.name}
-                                    onSave={(n) => onRenameHabit(h.id, n)}
-                                    onDelete={() => onDeleteHabit(h.id)}
-                                    onUp={() => onMoveHabit(idx, -1)}
-                                    onDown={() => onMoveHabit(idx, 1)}
-                                    canUp={idx > 0}
-                                    canDown={idx < model.habits.length - 1}
-                                  />
-                                : <>{h.name}{h.category && h.category !== "both" && focus === "all" && <span className="cat-badge">{h.category === "work" ? "💼" : "🏠"}</span>}</>}
-                            </div>
-                            {editMode && (
-                              <select className="habit-cat-select" value={h.category || "personal"} onChange={(e) => onHabitCategory(h.id, e.target.value)}>
-                                <option value="personal">Personal</option>
-                                <option value="work">Work</option>
-                                <option value="both">Both</option>
-                              </select>
-                            )}
-                            {!editMode && weekDates.map((d) => {
-                              const iso = toISO(d);
-                              const on = model.marks.has(markKey(h.id, iso));
-                              return (
-                                <button
-                                  key={iso}
-                                  className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
-                                  aria-label={`${h.name} ${iso}`}
-                                  onClick={() => {
+                  /* ---- NORMAL MODE: 7-day grid ---- */
+                  <div className="habit-grid">
+                    <div className="habit-corner" />
+                    {weekDates.map((d, i) => (
+                      <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
+                    ))}
+                    {filtered.map((h) => (
+                      <React.Fragment key={h.id}>
+                        <div className="habit-name">
+                          {h.name}
+                          {h.category && h.category !== "both" && focus === "all" && <span className="cat-badge">{h.category === "work" ? " 💼" : " 🏠"}</span>}
+                        </div>
+                        {weekDates.map((d) => {
+                          const iso = toISO(d);
+                          const on = model.marks.has(markKey(h.id, iso));
+                          return (
+                            <button
+                              key={iso}
+                              className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
+                              aria-label={`${h.name} ${iso}`}
+                              onClick={() => {
+                                setModel((m) => {
+                                  const s = new Set(m.marks);
+                                  on ? s.delete(markKey(h.id, iso)) : s.add(markKey(h.id, iso));
+                                  return { ...m, marks: s };
+                                });
+                                toggleHabitMark(h.id, iso, !on).catch(() => {});
+                                if (!on && iso === today) {
+                                  setTimeout(() => {
                                     setModel((m) => {
-                                      const s = new Set(m.marks);
-                                      on ? s.delete(markKey(h.id, iso)) : s.add(markKey(h.id, iso));
-                                      return { ...m, marks: s };
+                                      const vis = m.habits.filter((hb) => passesFocus(hb.category));
+                                      const allDone = vis.every((hb) => m.marks.has(markKey(hb.id, today)));
+                                      if (allDone && vis.length > 0) celebrate("All habits done! 💪");
+                                      return m;
                                     });
-                                    toggleHabitMark(h.id, iso, !on).catch(() => {});
-                                    if (!on && iso === today) {
-                                      setTimeout(() => {
-                                        setModel((m) => {
-                                          const vis = m.habits.filter((hb) => passesFocus(hb.category));
-                                          const allDone = vis.every((hb) => m.marks.has(markKey(hb.id, today)));
-                                          if (allDone && vis.length > 0) celebrate("All habits done! 💪");
-                                          return m;
-                                        });
-                                      }, 50);
-                                    }
-                                  }}
-                                />
-                              );
-                            })}
-                            {editMode && weekDates.map((d) => (
-                              <div key={toISO(d)} className="habit-cell" style={{opacity:.3, pointerEvents:'none'}} />
-                            ))}
-                          </React.Fragment>
-                        );
-                      })}
-                    </div>
-                    {editMode && <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />}
-                  </>
+                                  }, 50);
+                                }
+                              }}
+                            />
+                          );
+                        })}
+                      </React.Fragment>
+                    ))}
+                  </div>
                 )}
               </div>
             );
