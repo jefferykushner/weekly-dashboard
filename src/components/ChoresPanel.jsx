@@ -38,7 +38,9 @@ export default function ChoresPanel({
 
       {chores.length === 0 && !editMode ? (
         <div className="chore-empty">
-          <p>Track household tasks that cycle — weekly, biweekly, monthly. They reset automatically.</p>
+          <p>{focus === "work"
+            ? "Track recurring work tasks — weekly reports, monthly reviews, recurring deadlines. They reset automatically."
+            : "Track household tasks that cycle — weekly, biweekly, monthly. They reset automatically."}</p>
         </div>
       ) : null}
 
@@ -75,7 +77,7 @@ export default function ChoresPanel({
       <div className="chore-add">
         <input
           value={newName}
-          placeholder="+ add chore"
+          placeholder={focus === "work" ? "+ add task" : "+ add chore"}
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
         />

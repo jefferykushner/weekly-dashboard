@@ -225,7 +225,8 @@ export default function Dashboard() {
   // ---- habit management ----
   const onAddHabit = async (name) => {
     const pos = model.habits.length ? Math.max(...model.habits.map((h) => h.position || 0)) + 1 : 0;
-    const row = await addHabit(name, pos);
+    const cat = focus === "all" ? "personal" : focus;
+    const row = await addHabit(name, pos, cat);
     setModel((m) => ({ ...m, habits: [...m.habits, row] }));
   };
   const onRenameHabit = (id, name) => {
@@ -305,7 +306,8 @@ export default function Dashboard() {
   };
   const onAddChore = async (name, frequency) => {
     const pos = chores.length ? Math.max(...chores.map((c) => c.position || 0)) + 1 : 0;
-    const row = await addChore(name, frequency, pos);
+    const cat = focus === "all" ? "personal" : focus;
+    const row = await addChore(name, frequency, pos, cat);
     setChores((ch) => [...ch, row]);
   };
   const onRenameChore = (id, name) => {
@@ -331,7 +333,11 @@ export default function Dashboard() {
   };
 
   // ---- bill management ----
-  const onAddBill = async (b) => { const row = await addBill(b); setBills((bs) => [...bs, row]); };
+  const onAddBill = async (b) => {
+    const cat = focus === "all" ? "personal" : focus;
+    const row = await addBill({ ...b, category: cat });
+    setBills((bs) => [...bs, row]);
+  };
   const onPayBill = async (id) => {
     await payBill(id);
     setBills(await getBills());
@@ -636,12 +642,16 @@ export default function Dashboard() {
                         </div>
                       );
                     })}
-                    <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />
+                    <AddRow placeholder={focus === "work" ? "+ add work habit" : focus === "personal" ? "+ add personal habit" : "+ add habit"} onAdd={onAddHabit} subtle />
                   </div>
                 ) : filtered.length === 0 ? (
                   <div className="habit-empty">
-                    <p>Track habits that matter to you — stretches, water, reading, anything.</p>
-                    <AddRow placeholder="+ add your first habit" onAdd={onAddHabit} />
+                    <p>{focus === "work"
+                      ? "Track work habits — morning planning, inbox zero, standup prep, anything that keeps your workday on track."
+                      : focus === "personal"
+                      ? "Track personal habits — stretches, water, reading, anything that matters to you."
+                      : "Track habits that matter to you — stretches, water, reading, anything."}</p>
+                    <AddRow placeholder={focus === "work" ? "+ add your first work habit" : "+ add your first habit"} onAdd={onAddHabit} />
                   </div>
                 ) : (
                   /* ---- NORMAL MODE: 7-day grid ---- */

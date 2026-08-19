@@ -170,10 +170,10 @@ export async function toggleHabitMark(habit_id, dt, on) {
   }
 }
 
-export async function addHabit(name, position) {
+export async function addHabit(name, position, category = "personal") {
   const { data, error } = await supabase
     .from("habits")
-    .insert({ name, position })
+    .insert({ name, position, category })
     .select()
     .single();
   if (error) throw error;
@@ -322,10 +322,10 @@ export async function getBills() {
   return data || [];
 }
 
-export async function addBill({ name, amount, due_date, recur = "none" }) {
+export async function addBill({ name, amount, due_date, recur = "none", category = "personal" }) {
   const { data, error } = await supabase
     .from("bills")
-    .insert({ name, amount, due_date, recur })
+    .insert({ name, amount, due_date, recur, category })
     .select()
     .single();
   if (error) throw error;
@@ -416,10 +416,10 @@ export async function getChoreCompletions() {
   return data || [];
 }
 
-export async function addChore(name, frequency, position) {
+export async function addChore(name, frequency, position, category = "personal") {
   const { data, error } = await supabase
     .from("chores")
-    .insert({ name, frequency, position })
+    .insert({ name, frequency, position, category })
     .select()
     .single();
   if (error) throw error;
