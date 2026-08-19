@@ -6,10 +6,12 @@ import ProgressRing from "./ProgressRing";
 export default function ChoresPanel({
   chores, completions, isDone,
   onToggle, onAdd, onRename, onDelete, onFreq, onMove, editMode,
+  focus, onCategory,
 }) {
   const [newName, setNewName] = useState("");
   const [newFreq, setNewFreq] = useState("weekly");
   const doneCount = chores.filter((c) => isDone(c)).length;
+  const title = focus === "work" ? "Tasks" : focus === "personal" ? "Chores" : "Chores / Tasks";
 
   const submit = () => {
     const t = newName.trim();
@@ -30,7 +32,7 @@ export default function ChoresPanel({
     <div className="panel chores-panel">
       <div className="panel-head">
         <span className="dot" style={{ background: "#B58A3C" }} />
-        <h3>Chores</h3>
+        <h3>{title}</h3>
         {chores.length > 0 && <ProgressRing done={doneCount} total={chores.length} />}
       </div>
 
@@ -59,6 +61,7 @@ export default function ChoresPanel({
                     onRename={(n) => onRename(c.id, n)}
                     onDelete={() => onDelete(c.id)}
                     onFreq={(f) => onFreq(c.id, f)}
+                    onCategory={onCategory ? (cat) => onCategory(c.id, cat) : null}
                     onUp={idx > 0 ? () => onMove(chores.indexOf(c), -1) : null}
                     onDown={idx < items.length - 1 ? () => onMove(chores.indexOf(c), 1) : null}
                   />
@@ -86,7 +89,7 @@ export default function ChoresPanel({
   );
 }
 
-function ChoreRow({ chore, done, editMode, onToggle, onRename, onDelete, onFreq, onUp, onDown }) {
+function ChoreRow({ chore, done, editMode, onToggle, onRename, onDelete, onFreq, onCategory, onUp, onDown }) {
   const [name, setName] = useState(chore.name);
   const [freqMenu, setFreqMenu] = useState(false);
   return (
@@ -117,6 +120,13 @@ function ChoreRow({ chore, done, editMode, onToggle, onRename, onDelete, onFreq,
               </div>
             )}
           </div>
+          {onCategory && (
+            <select className="chore-freq-select" value={chore.category || "personal"} onChange={(e) => onCategory(e.target.value)}>
+              <option value="personal">Personal</option>
+              <option value="work">Work</option>
+              <option value="both">Both</option>
+            </select>
+          )}
           <button className="del" onClick={onDelete} aria-label="Delete">×</button>
         </>
       ) : (

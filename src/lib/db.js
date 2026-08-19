@@ -185,6 +185,11 @@ export async function renameHabit(id, name) {
   if (error) throw error;
 }
 
+export async function updateHabitCategory(id, category) {
+  const { error } = await supabase.from("habits").update({ category }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteHabit(id) {
   // habit_marks cascade-delete via the foreign key
   const { error } = await supabase.from("habits").delete().eq("id", id);
@@ -314,6 +319,11 @@ export async function updateBill(id, patch) {
   if (error) throw error;
 }
 
+export async function updateBillCategory(id, category) {
+  const { error } = await supabase.from("bills").update({ category }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deleteBill(id) {
   // also delete any uploaded file
   const { data: bill } = await supabase.from("bills").select("file_path").eq("id", id).maybeSingle();
@@ -400,6 +410,11 @@ export async function addChore(name, frequency, position) {
 
 export async function renameChore(id, name) {
   const { error } = await supabase.from("chores").update({ name }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateChoreCategory(id, category) {
+  const { error } = await supabase.from("chores").update({ category }).eq("id", id);
   if (error) throw error;
 }
 

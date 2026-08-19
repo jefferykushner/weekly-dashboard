@@ -14,11 +14,13 @@ function fmtAmt(n) {
 const URGENCY_CLASS = { overdue: "bill-overdue", today: "bill-today", soon: "bill-soon", upcoming: "", paid: "bill-paid" };
 
 export default function BillsPanel({
-  bills, onAdd, onPay, onUnpay, onDelete, onUpdate, onUpload, onViewFile, editMode,
+  bills, allBills, onAdd, onPay, onUnpay, onDelete, onUpdate, onUpload, onViewFile, editMode,
+  focus, onCategory,
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState({ name: "", amount: "", due_date: "", recur: "monthly" });
   const fileInputs = useRef({});
+  const title = focus === "work" ? "Work bills" : focus === "personal" ? "Personal bills" : "Bills";
 
   const unpaid = bills.filter((b) => !b.paid).sort((a, b) => a.due_date.localeCompare(b.due_date));
   const paid = bills.filter((b) => b.paid).sort((a, b) => (b.paid_at || "").localeCompare(a.paid_at || ""));
@@ -44,7 +46,7 @@ export default function BillsPanel({
     <div className="panel bills-panel">
       <div className="panel-head">
         <span className="dot" style={{ background: "#DD6B53" }} />
-        <h3>Bills</h3>
+        <h3>{title}</h3>
         {unpaid.length > 0 && <span className="bills-badge">{unpaid.length} due</span>}
       </div>
 
@@ -78,6 +80,13 @@ export default function BillsPanel({
                 )}
                 <input ref={(el) => (fileInputs.current[b.id] = el)} type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" hidden
                   onChange={(e) => { if (e.target.files[0]) onUpload(b.id, e.target.files[0]); }} />
+                {editMode && onCategory && (
+                  <select className="panel-cat-select" value={b.category || "personal"} onChange={(e) => onCategory(b.id, e.target.value)}>
+                    <option value="personal">Personal</option>
+                    <option value="work">Work</option>
+                    <option value="both">Both</option>
+                  </select>
+                )}
                 {editMode && <button className="del" onClick={() => onDelete(b.id)} aria-label="Delete">&times;</button>}
               </div>
               {urg === "overdue" && <span className="bill-urg-tag">overdue</span>}

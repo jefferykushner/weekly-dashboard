@@ -8,11 +8,11 @@ import {
 import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
-  addHabit, renameHabit, deleteHabit, moveToDay, moveToPanel, persistHabitOrder, setRecur,
+  addHabit, renameHabit, deleteHabit, moveToDay, moveToPanel, persistHabitOrder, setRecur, updateHabitCategory,
   addPanel, renamePanel, deletePanel, persistPanelOrder, setTaskMark, updatePanelCategory,
   getChores, getChoreCompletions, addChore, renameChore, updateChoreFreq, deleteChore,
-  completeChore, uncompleteChore, persistChoreOrder,
-  getBills, addBill, payBill, unpayBill, deleteBill, uploadInvoice, getInvoiceUrl,
+  completeChore, uncompleteChore, persistChoreOrder, updateChoreCategory,
+  getBills, addBill, payBill, unpayBill, deleteBill, uploadInvoice, getInvoiceUrl, updateBillCategory,
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
@@ -56,6 +56,23 @@ export default function Dashboard() {
   const [bills, setBills] = useState([]);
   // Focus filter
   const [focus, setFocus] = useState("all"); // "all" | "work" | "personal"
+
+  // Helper: does an item pass the focus filter?
+  const passesFocus = (cat) => focus === "all" || (cat || "both") === "both" || (cat || "both") === focus;
+
+  // Category handlers for habits, chores, bills
+  const onHabitCategory = (id, category) => {
+    setModel((m) => ({ ...m, habits: m.habits.map((h) => (h.id === id ? { ...h, category } : h)) }));
+    updateHabitCategory(id, category).catch(() => {});
+  };
+  const onChoreCategory = (id, category) => {
+    setChores((ch) => ch.map((c) => (c.id === id ? { ...c, category } : c)));
+    updateChoreCategory(id, category).catch(() => {});
+  };
+  const onBillCategory = (id, category) => {
+    setBills((bs) => bs.map((b) => (b.id === id ? { ...b, category } : b)));
+    updateBillCategory(id, category).catch(() => {});
+  };
 
   const celebrate = (msg) => {
     setConfetti((c) => c + 1);
@@ -557,80 +574,96 @@ export default function Dashboard() {
         </section>
 
         <section className="lower">
-          {/* Daily tracker */}
-          <div className="panel habits">
-            <div className="panel-head">
-              <span className="dot" style={{ background: "var(--done)" }} />
-              <h3>Daily tracker</h3>
-              {model.habits.length > 0 && (() => {
-                const todayDone = model.habits.filter((h) => model.marks.has(markKey(h.id, today))).length;
-                return <ProgressRing done={todayDone} total={model.habits.length} />;
-              })()}
-            </div>
-            {model.habits.length === 0 ? (
-              <div className="habit-empty">
-                <p>Track habits that matter to you — stretches, water, reading, anything.</p>
-                <AddRow placeholder="+ add your first habit" onAdd={onAddHabit} />
-              </div>
-            ) : (
-              <>
-                <div className="habit-grid">
-                  <div className="habit-corner" />
-                  {weekDates.map((d, i) => (
-                    <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
-                  ))}
-                  {model.habits.map((h, idx) => (
-                    <React.Fragment key={h.id}>
-                      <div className="habit-name">
-                        {editMode
-                          ? <EditableName
-                              value={h.name}
-                              onSave={(n) => onRenameHabit(h.id, n)}
-                              onDelete={() => onDeleteHabit(h.id)}
-                              onUp={() => onMoveHabit(idx, -1)}
-                              onDown={() => onMoveHabit(idx, 1)}
-                              canUp={idx > 0}
-                              canDown={idx < model.habits.length - 1}
-                            />
-                          : h.name}
-                      </div>
-                      {weekDates.map((d) => {
-                        const iso = toISO(d);
-                        const on = model.marks.has(markKey(h.id, iso));
+          {/* Daily tracker / Work habits — filtered by focus */}
+          {(() => {
+            const filtered = model.habits.filter((h) => passesFocus(h.category));
+            const trackerTitle = focus === "work" ? "Work habits" : focus === "personal" ? "Personal habits" : "Daily tracker";
+            const todayDone = filtered.filter((h) => model.marks.has(markKey(h.id, today))).length;
+            return (
+              <div className="panel habits">
+                <div className="panel-head">
+                  <span className="dot" style={{ background: "var(--done)" }} />
+                  <h3>{trackerTitle}</h3>
+                  {filtered.length > 0 && <ProgressRing done={todayDone} total={filtered.length} />}
+                </div>
+                {filtered.length === 0 ? (
+                  <div className="habit-empty">
+                    <p>Track habits that matter to you — stretches, water, reading, anything.</p>
+                    <AddRow placeholder="+ add your first habit" onAdd={onAddHabit} />
+                  </div>
+                ) : (
+                  <>
+                    <div className="habit-grid">
+                      <div className="habit-corner" />
+                      {weekDates.map((d, i) => (
+                        <div key={i} className={"habit-daycol" + (toISO(d) === today ? " today" : "")}>{DAY_NAMES[i][0]}</div>
+                      ))}
+                      {filtered.map((h) => {
+                        const idx = model.habits.indexOf(h);
                         return (
-                          <button
-                            key={iso}
-                            className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
-                            aria-label={`${h.name} ${iso}`}
-                            disabled={editMode}
-                            onClick={() => {
-                              setModel((m) => {
-                                const s = new Set(m.marks);
-                                on ? s.delete(markKey(h.id, iso)) : s.add(markKey(h.id, iso));
-                                return { ...m, marks: s };
-                              });
-                              toggleHabitMark(h.id, iso, !on).catch(() => {});
-                              // celebrate if all habits are now done for today
-                              if (!on && iso === today) {
-                                setTimeout(() => {
-                                  setModel((m) => {
-                                    const allDone = m.habits.every((hb) => m.marks.has(markKey(hb.id, today)));
-                                    if (allDone && m.habits.length > 0) celebrate("All habits done! 💪");
-                                    return m;
-                                  });
-                                }, 50);
-                              }
-                            }}
-                          />
+                          <React.Fragment key={h.id}>
+                            <div className="habit-name">
+                              {editMode
+                                ? <EditableName
+                                    value={h.name}
+                                    onSave={(n) => onRenameHabit(h.id, n)}
+                                    onDelete={() => onDeleteHabit(h.id)}
+                                    onUp={() => onMoveHabit(idx, -1)}
+                                    onDown={() => onMoveHabit(idx, 1)}
+                                    canUp={idx > 0}
+                                    canDown={idx < model.habits.length - 1}
+                                  />
+                                : <>{h.name}{h.category && h.category !== "both" && focus === "all" && <span className="cat-badge">{h.category === "work" ? "💼" : "🏠"}</span>}</>}
+                            </div>
+                            {editMode && (
+                              <select className="habit-cat-select" value={h.category || "personal"} onChange={(e) => onHabitCategory(h.id, e.target.value)}>
+                                <option value="personal">Personal</option>
+                                <option value="work">Work</option>
+                                <option value="both">Both</option>
+                              </select>
+                            )}
+                            {!editMode && weekDates.map((d) => {
+                              const iso = toISO(d);
+                              const on = model.marks.has(markKey(h.id, iso));
+                              return (
+                                <button
+                                  key={iso}
+                                  className={"habit-cell" + (on ? " on" : "") + (iso === today ? " today" : "")}
+                                  aria-label={`${h.name} ${iso}`}
+                                  onClick={() => {
+                                    setModel((m) => {
+                                      const s = new Set(m.marks);
+                                      on ? s.delete(markKey(h.id, iso)) : s.add(markKey(h.id, iso));
+                                      return { ...m, marks: s };
+                                    });
+                                    toggleHabitMark(h.id, iso, !on).catch(() => {});
+                                    if (!on && iso === today) {
+                                      setTimeout(() => {
+                                        setModel((m) => {
+                                          const vis = m.habits.filter((hb) => passesFocus(hb.category));
+                                          const allDone = vis.every((hb) => m.marks.has(markKey(hb.id, today)));
+                                          if (allDone && vis.length > 0) celebrate("All habits done! 💪");
+                                          return m;
+                                        });
+                                      }, 50);
+                                    }
+                                  }}
+                                />
+                              );
+                            })}
+                            {editMode && weekDates.map((d) => (
+                              <div key={toISO(d)} className="habit-cell" style={{opacity:.3, pointerEvents:'none'}} />
+                            ))}
+                          </React.Fragment>
                         );
                       })}
-                    </React.Fragment>
-                  ))}
-                </div>
-                {editMode && <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />}
-              </>
-            )}
-          </div>
+                    </div>
+                    {editMode && <AddRow placeholder="+ add habit" onAdd={onAddHabit} subtle />}
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Brain dump */}
           <div className="panel braindump">
@@ -659,8 +692,10 @@ export default function Dashboard() {
 
           {/* Bills tracker */}
           <BillsPanel
-            bills={bills}
+            bills={bills.filter((b) => passesFocus(b.category))}
+            allBills={bills}
             editMode={editMode}
+            focus={focus}
             onAdd={onAddBill}
             onPay={onPayBill}
             onUnpay={onUnpayBill}
@@ -668,20 +703,23 @@ export default function Dashboard() {
             onUpdate={() => {}}
             onUpload={onUploadInvoice}
             onViewFile={onViewInvoice}
+            onCategory={onBillCategory}
           />
 
           {/* Chores tracker */}
           <ChoresPanel
-            chores={chores}
+            chores={chores.filter((c) => passesFocus(c.category))}
             completions={choreComps}
             isDone={choreIsDone}
             editMode={editMode}
+            focus={focus}
             onToggle={onToggleChore}
             onAdd={onAddChore}
             onRename={onRenameChore}
             onDelete={onDeleteChore}
             onFreq={onChoreFreq}
             onMove={onMoveChore}
+            onCategory={onChoreCategory}
           />
 
           {/* Your lists — renameable, reorderable, filtered by focus */}
