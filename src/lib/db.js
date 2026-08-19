@@ -221,6 +221,11 @@ export async function renamePanel(id, title) {
   if (error) throw error;
 }
 
+export async function updatePanelCategory(id, category) {
+  const { error } = await supabase.from("panels").update({ category }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function deletePanel(id) {
   // tasks with this panel_id cascade-delete via the foreign key
   const { error } = await supabase.from("panels").delete().eq("id", id);

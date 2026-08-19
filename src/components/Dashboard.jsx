@@ -9,7 +9,7 @@ import {
   loadWeek, addTask, setDone, setBody, delTask, setDate,
   setTheme, toggleHabitMark, getPanels, getHabits,
   addHabit, renameHabit, deleteHabit, moveToDay, moveToPanel, persistHabitOrder, setRecur,
-  addPanel, renamePanel, deletePanel, persistPanelOrder, setTaskMark,
+  addPanel, renamePanel, deletePanel, persistPanelOrder, setTaskMark, updatePanelCategory,
   getChores, getChoreCompletions, addChore, renameChore, updateChoreFreq, deleteChore,
   completeChore, uncompleteChore, persistChoreOrder,
   getBills, addBill, payBill, unpayBill, deleteBill, uploadInvoice, getInvoiceUrl,
@@ -54,6 +54,8 @@ export default function Dashboard() {
   const [choreComps, setChoreComps] = useState([]);
   // Bills
   const [bills, setBills] = useState([]);
+  // Focus filter
+  const [focus, setFocus] = useState("all"); // "all" | "work" | "personal"
 
   const celebrate = (msg) => {
     setConfetti((c) => c + 1);
@@ -237,6 +239,10 @@ export default function Dashboard() {
   const onRenamePanel = (id, title) => {
     setModel((m) => ({ ...m, panels: m.panels.map((p) => (p.id === id ? { ...p, title } : p)) }));
     renamePanel(id, title).catch(() => {});
+  };
+  const onCategoryPanel = (id, category) => {
+    setModel((m) => ({ ...m, panels: m.panels.map((p) => (p.id === id ? { ...p, category } : p)) }));
+    updatePanelCategory(id, category).catch(() => {});
   };
   const onDeletePanel = (id) => {
     if (!window.confirm("Delete this list and everything in it?")) return;
@@ -485,6 +491,11 @@ export default function Dashboard() {
             )}
           </div>
           <div className="nav">
+            <div className="focus-toggle">
+              <button className={focus === "all" ? "on" : ""} onClick={() => setFocus("all")}>All</button>
+              <button className={focus === "work" ? "on" : ""} onClick={() => setFocus("work")}>Work</button>
+              <button className={focus === "personal" ? "on" : ""} onClick={() => setFocus("personal")}>Personal</button>
+            </div>
             <button className={"edit-toggle" + (editMode ? " on" : "")} onClick={() => setEditMode((e) => !e)}>
               {editMode ? "done" : "edit"}
             </button>
@@ -673,27 +684,34 @@ export default function Dashboard() {
             onMove={onMoveChore}
           />
 
-          {/* Your lists — renameable, reorderable */}
-          {model.panels.map((p, idx) => (
-            <Panel
-              key={p.id}
-              title={p.title}
-              accent={p.accent}
-              editMode={editMode}
-              onRename={(t) => onRenamePanel(p.id, t)}
-              onDelete={() => onDeletePanel(p.id)}
-              onLeft={() => onMovePanel(idx, -1)}
-              onRight={() => onMovePanel(idx, 1)}
-              canLeft={idx > 0}
-              canRight={idx < model.panels.length - 1}
-              items={model.panelItems.filter((t) => t.panel_id === p.id)}
-              onToggle={toggleIn("panelItems")}
-              onEdit={editIn("panelItems")}
-              onRemove={removeIn("panelItems")}
-              onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
-              onClearDone={clearDone("panelItems", (x) => x.panel_id === p.id)}
-            />
-          ))}
+          {/* Your lists — renameable, reorderable, filtered by focus */}
+          {model.panels
+            .filter((p) => focus === "all" || (p.category || "both") === "both" || (p.category || "both") === focus)
+            .map((p) => {
+              const idx = model.panels.indexOf(p);
+              return (
+                <Panel
+                  key={p.id}
+                  title={p.title}
+                  accent={p.accent}
+                  category={p.category || "both"}
+                  editMode={editMode}
+                  onRename={(t) => onRenamePanel(p.id, t)}
+                  onCategory={(c) => onCategoryPanel(p.id, c)}
+                  onDelete={() => onDeletePanel(p.id)}
+                  onLeft={() => onMovePanel(idx, -1)}
+                  onRight={() => onMovePanel(idx, 1)}
+                  canLeft={idx > 0}
+                  canRight={idx < model.panels.length - 1}
+                  items={model.panelItems.filter((t) => t.panel_id === p.id)}
+                  onToggle={toggleIn("panelItems")}
+                  onEdit={editIn("panelItems")}
+                  onRemove={removeIn("panelItems")}
+                  onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
+                  onClearDone={clearDone("panelItems", (x) => x.panel_id === p.id)}
+                />
+              );
+            })}
 
           {editMode && (
             <button className="panel add-panel" onClick={onAddPanel}>＋ add list</button>

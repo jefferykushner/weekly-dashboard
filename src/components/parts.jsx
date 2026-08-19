@@ -180,6 +180,7 @@ export function EventRow({ item, onEdit, onRemove, onRecur }) {
 export function Panel({
   title, accent, items, onToggle, onEdit, onRemove, onAdd, big,
   editMode, onRename, onDelete, onLeft, onRight, canLeft, canRight, onClearDone,
+  category, onCategory,
 }) {
   const done = items.filter((i) => i.done).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
@@ -187,8 +188,9 @@ export function Panel({
   const [showDone, setShowDone] = useState(false);
   const active = items.filter((i) => !i.done);
   const finished = items.filter((i) => i.done);
+  const CAT_ICON = { work: "💼", personal: "🏠", both: "◆" };
   return (
-    <div className={"panel" + (big ? " big" : "")}>
+    <div className={"panel" + (big ? " big" : "")} style={{ background: `color-mix(in srgb, ${accent || '#F4EEE3'} 10%, var(--panel))` }}>
       {editMode && onRename ? (
         <div className="panel-edit-head">
           <span className="reorder-h">
@@ -202,12 +204,20 @@ export function Panel({
             onBlur={() => { if (tDraft.trim() && tDraft !== title) onRename(tDraft.trim()); }}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           />
+          {onCategory && (
+            <select className="panel-cat-select" value={category || "both"} onChange={(e) => onCategory(e.target.value)}>
+              <option value="both">Both</option>
+              <option value="work">Work</option>
+              <option value="personal">Personal</option>
+            </select>
+          )}
           <button className="del" onClick={onDelete} aria-label="Delete list">×</button>
         </div>
       ) : (
         <div className="panel-head">
           <span className="dot" style={{ background: accent }} />
           <h3>{title}</h3>
+          {category && category !== "both" && <span className="cat-badge">{CAT_ICON[category]}</span>}
           {items.length > 0 && <span className="count">{done}/{items.length}</span>}
         </div>
       )}
