@@ -10,6 +10,7 @@ import {
   setTheme, toggleHabitMark, getPanels, getHabits,
   addHabit, renameHabit, deleteHabit, moveToDay, moveToPanel, persistHabitOrder, setRecur, updateHabitCategory,
   addPanel, renamePanel, deletePanel, persistPanelOrder, setTaskMark, updatePanelCategory,
+  movePanelItemTo, movePanelItemToDay,
   getChores, getChoreCompletions, addChore, renameChore, updateChoreFreq, deleteChore,
   completeChore, uncompleteChore, persistChoreOrder, updateChoreCategory,
   getBills, addBill, payBill, unpayBill, deleteBill, uploadInvoice, getInvoiceUrl, updateBillCategory,
@@ -379,6 +380,29 @@ export default function Dashboard() {
       return { ...m, inbox, panelItems };
     });
     moveToPanel(id, panel_id).catch(() => {});
+  };
+
+  // Move a panel item to a different panel
+  const movePanelToPanel = (id, newPanelId) => {
+    setModel((m) => ({
+      ...m,
+      panelItems: m.panelItems.map((t) => (t.id === id ? { ...t, panel_id: newPanelId } : t)),
+    }));
+    movePanelItemTo(id, newPanelId).catch(() => {});
+  };
+
+  // Move a panel item to a day
+  const movePanelToDay = (id, iso) => {
+    setModel((m) => {
+      const item = m.panelItems.find((x) => x.id === id);
+      const panelItems = m.panelItems.filter((x) => x.id !== id);
+      const inWeek = iso >= startISO && iso <= toISO(addDays(mon, 6));
+      const dayInWeek = inWeek && item
+        ? [...m.dayInWeek, { ...item, kind: "day", dt: iso, panel_id: null, done: false }]
+        : m.dayInWeek;
+      return { ...m, panelItems, dayInWeek };
+    });
+    movePanelItemToDay(id, iso).catch(() => {});
   };
 
   const onRecurEvent = (id, recur) => {
@@ -751,6 +775,10 @@ export default function Dashboard() {
                   onRemove={removeIn("panelItems")}
                   onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
                   onClearDone={clearDone("panelItems", (x) => x.panel_id === p.id)}
+                  dayOptions={dayOptions}
+                  panelOptions={model.panels.filter((op) => op.id !== p.id).map((op) => ({ id: op.id, title: op.title }))}
+                  onMoveToDay={(id, iso) => movePanelToDay(id, iso)}
+                  onMoveToPanel={(id, pid) => movePanelToPanel(id, pid)}
                 />
               );
             })}

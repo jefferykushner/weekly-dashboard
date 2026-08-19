@@ -181,6 +181,7 @@ export function Panel({
   title, accent, items, onToggle, onEdit, onRemove, onAdd, big,
   editMode, onRename, onDelete, onLeft, onRight, canLeft, canRight, onClearDone,
   category, onCategory,
+  dayOptions, panelOptions, onMoveToDay, onMoveToPanel,
 }) {
   const done = items.filter((i) => i.done).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
@@ -227,7 +228,14 @@ export function Panel({
           <Row key={it.id} item={it} accent={accent}
             onToggle={(d) => onToggle(it.id, d)}
             onEdit={(t) => onEdit(it.id, t)}
-            onRemove={() => onRemove(it.id)} />
+            onRemove={() => onRemove(it.id)}
+            {...(onMoveToPanel ? {
+              dayOptions,
+              panelOptions,
+              onMove: (iso) => onMoveToDay(it.id, iso),
+              onMovePanel: (pid) => onMoveToPanel(it.id, pid),
+            } : {})}
+          />
         ))}
         {finished.length > 0 && (
           <div className="done-zone">

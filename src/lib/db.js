@@ -237,6 +237,24 @@ export async function deletePanel(id) {
   if (error) throw error;
 }
 
+// Move a panel item to a different panel
+export async function movePanelItemTo(id, newPanelId) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ panel_id: newPanelId })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+// Move a panel item to a specific day (becomes a day to-do)
+export async function movePanelItemToDay(id, iso) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ kind: "day", dt: iso, panel_id: null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function persistPanelOrder(orderedIds) {
   await Promise.all(
     orderedIds.map((id, i) => supabase.from("panels").update({ position: i }).eq("id", id))
