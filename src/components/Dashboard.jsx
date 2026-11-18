@@ -23,6 +23,8 @@ import ProgressRing from "./ProgressRing";
 import ChoresPanel from "./ChoresPanel";
 import BillsPanel from "./BillsPanel";
 import { buildSuggestions, suggestionFor } from "../lib/suggest";
+import { parseTime, defaultRemind } from "../lib/timeparse";
+import { setTime } from "../lib/db";
 import { getWords } from "../lib/db";
 
 const DEFAULT_PANELS = [
@@ -115,7 +117,32 @@ export default function Dashboard() {
     });
     setThemeDraft(d.theme || "");
     setOverdue(d.overdue);
+    backfillTimes(d);
   }, [startISO]);
+
+  // One-time tidy-up: events and to-dos written before times existed ("Church - 10am")
+  // get their time filled in from the text, with a reminder, so they sort and remind.
+  // Runs once per browser; if the database can't take times yet, it tries again next load.
+  const backfillTimes = async (d) => {
+    const FLAG = "time_backfill_v1";
+    try { if (localStorage.getItem(FLAG)) return; } catch { return; }
+    const today = todayISO();
+    const candidates = [...d.events, ...d.dayInWeek, ...d.recurringTodos].filter((t) =>
+      !t.at_time && t.dt && (t.dt >= today || (t.recur && t.recur !== "none")) && parseTime(t.body));
+    try {
+      for (const t of candidates) {
+        await setTime(t.id, parseTime(t.body), defaultRemind(t.kind));
+      }
+      localStorage.setItem(FLAG, String(candidates.length));
+      if (candidates.length) {
+        const fix = (l) => l.map((t) => {
+          const c = candidates.find((x) => x.id === t.id);
+          return c ? { ...t, at_time: parseTime(t.body), remind_before: defaultRemind(t.kind) } : t;
+        });
+        setModel((m) => m && ({ ...m, events: fix(m.events), dayInWeek: fix(m.dayInWeek), recurringTodos: fix(m.recurringTodos) }));
+      }
+    } catch { /* times not available yet: leave the flag unset and try next time */ }
+  };
 
   useEffect(() => {
     (async () => {
@@ -178,6 +205,21 @@ export default function Dashboard() {
   const addIn = (key, payload) => async (body) => {
     const row = await addTask({ ...payload, body });
     patchList(key, (l) => [...l, row]);
+  };
+  // Adding to a day: a time in the text ("dentist 2pm") sets the time and a reminder.
+  const addDated = (key, kind, iso) => (body) => {
+    const at = parseTime(body);
+    return addIn(key, { kind, dt: iso, at_time: at, remind_before: at ? defaultRemind(kind) : null })(body);
+  };
+  // Set/clear the time + reminder on an event or to-do (series rows included).
+  const onSetTime = (id, at_time, remind_before) => {
+    const apply = (l) => l.map((t) => (t.id === id ? { ...t, at_time, remind_before: at_time ? remind_before : null } : t));
+    setModel((m) => ({ ...m, events: apply(m.events), dayInWeek: apply(m.dayInWeek), recurringTodos: apply(m.recurringTodos) }));
+    setTime(id, at_time, remind_before).catch(() => {
+      const tid = Date.now();
+      setToasts((t) => [...t, { id: tid, msg: "Couldn't save the time. Has migration_reminders.sql been run in Supabase?" }]);
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== tid)), 5000);
+    });
   };
 
   // Brain dump: checking an item clears it from view (brief fade first).
@@ -594,8 +636,9 @@ export default function Dashboard() {
                   } else editIn("dayInWeek")(id, t);
                 }}
                 onRemove={removeDayItem}
-                onAdd={addIn("dayInWeek", { kind: "day", dt: iso })}
-                onAddEvent={addIn("events", { kind: "event", dt: iso })}
+                onAdd={addDated("dayInWeek", "day", iso)}
+                onAddEvent={addDated("events", "event", iso)}
+                onSetTime={onSetTime}
                 onEditEvent={editIn("events")}
                 onRemoveEvent={removeIn("events")}
                 onRecurEvent={onRecurEvent}

@@ -70,14 +70,27 @@ export async function flushQueue() {
 // ---------------------------------------------------------------
 //  Generic task helpers
 // ---------------------------------------------------------------
-export async function addTask({ kind, body, dt = null, panel_id = null, position = 0 }) {
+export async function addTask({ kind, body, dt = null, panel_id = null, position = 0, at_time = null, remind_before = null }) {
+  const row = { kind, body, dt, panel_id, position };
+  // Only send time fields when there is a time, so adding still works
+  // even if migration_reminders.sql hasn't been run yet.
+  if (at_time) { row.at_time = at_time; row.remind_before = remind_before; }
   const { data, error } = await supabase
     .from("tasks")
-    .insert({ kind, body, dt, panel_id, position })
+    .insert(row)
     .select()
     .single();
   if (error) throw error;
   return data;
+}
+
+// Time of day + reminder for an event or dated to-do. Pass nulls to clear.
+export async function setTime(id, at_time, remind_before) {
+  const { error } = await supabase
+    .from("tasks")
+    .update({ at_time, remind_before: at_time ? remind_before : null })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function setDone(id, done) {

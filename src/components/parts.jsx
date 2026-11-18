@@ -1,5 +1,48 @@
 import React, { useState, useEffect, useRef } from "react";
 import { DAY_NAMES, RECUR_LABEL } from "../lib/dates";
+import { fmtTime, toInputTime, fromInputTime, REMIND_OPTIONS, defaultRemind, byTime } from "../lib/timeparse";
+
+// Time label (when set) or a hover clock button; click to set a time + reminder.
+// The iPhone app turns these into notifications.
+export function TimeButton({ item, kind, onSetTime }) {
+  const [open, setOpen] = useState(false);
+  const [t, setT] = useState(toInputTime(item.at_time));
+  const [r, setR] = useState(item.remind_before ?? (item.at_time ? null : defaultRemind(kind)));
+  const has = !!item.at_time;
+  const openMenu = () => {
+    setT(toInputTime(item.at_time));
+    setR(item.at_time ? item.remind_before ?? null : defaultRemind(kind));
+    setOpen((o) => !o);
+  };
+  return (
+    <div className="move-wrap time-wrap">
+      {has ? (
+        <button className="tlabel" onClick={openMenu} title="Change time / reminder">
+          {fmtTime(item.at_time)}{item.remind_before != null && <span className="tbell">🔔</span>}
+        </button>
+      ) : (
+        <button className="time-btn" onClick={openMenu} title="Set a time / reminder" aria-label="Set time">◷</button>
+      )}
+      {open && (
+        <div className={"move-menu time-menu" + (has ? " anchor-left" : "")} onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}>
+          <div className="move-menu-label">time</div>
+          <input className="menu-date" type="time" value={t} autoFocus
+            onChange={(e) => setT(e.target.value)} />
+          <div className="move-menu-label">remind me</div>
+          <select className="menu-date" value={r == null ? "" : String(r)}
+            onChange={(e) => setR(e.target.value === "" ? null : parseInt(e.target.value, 10))}>
+            {REMIND_OPTIONS.map(([v, label]) => <option key={label} value={v == null ? "" : v}>{label}</option>)}
+          </select>
+          <div className="time-actions">
+            <button className="sel" disabled={!t}
+              onClick={() => { setOpen(false); onSetTime(fromInputTime(t), r); }}>Save</button>
+            {has && <button className="danger" onClick={() => { setOpen(false); onSetTime(null, null); }}>Clear</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Auto-growing, wrapping text field used for every editable item.
 // Enter commits (blurs) instead of inserting a newline, preserving the quick flow.
@@ -56,12 +99,18 @@ export function Row({ item, onToggle, onEdit, onRemove, compact, accent, dayOpti
       >
         <svg viewBox="0 0 16 16" className="tick"><path d="M3 8.5l3 3 7-8" /></svg>
       </button>
+      {todoCtl && todoCtl.onSetTime && item.at_time && (
+        <TimeButton item={item} kind="day" onSetTime={todoCtl.onSetTime} />
+      )}
       <GrowText
         className="row-text"
         value={text}
         onChange={setText}
         onCommit={() => { if (text !== item.body) onEdit(text); }}
       />
+      {todoCtl && todoCtl.onSetTime && !item.at_time && (
+        <TimeButton item={item} kind="day" onSetTime={todoCtl.onSetTime} />
+      )}
             {todoCtl && (
         <div className="move-wrap">
           <button className={"move" + (isSeries ? " recurring-mark" : "")} onClick={() => setMenu((m) => !m)} aria-label="Options" title={isSeries ? "Repeats — options" : "Reschedule / repeat"}>{isSeries ? "↻" : "⤳"}</button>
@@ -152,7 +201,7 @@ export function AddRow({ placeholder, onAdd, subtle, event }) {
 }
 
 // An event / appointment: no checkbox, no rollover. Optionally recurring.
-export function EventRow({ item, onEdit, onRemove, onRecur }) {
+export function EventRow({ item, onEdit, onRemove, onRecur, onSetTime }) {
   const [text, setText] = useState(item.body);
   const [menu, setMenu] = useState(false);
   const recur = item.recur || "none";
@@ -160,12 +209,14 @@ export function EventRow({ item, onEdit, onRemove, onRecur }) {
   return (
     <div className="erow">
       <span className={"edot" + (recurring ? " recurring" : "")} />
+      {onSetTime && item.at_time && <TimeButton item={item} kind="event" onSetTime={onSetTime} />}
       <GrowText
         className="etext"
         value={text}
         onChange={setText}
         onCommit={() => { if (text !== item.body) onEdit(text); }}
       />
+      {onSetTime && !item.at_time && <TimeButton item={item} kind="event" onSetTime={onSetTime} />}
       {onRecur && (
         <div className="move-wrap">
           <button
@@ -279,11 +330,12 @@ export function DayColumn({
   name, date, isToday, items, events,
   onToggle, onEdit, onRemove, onAdd,
   onAddEvent, onEditEvent, onRemoveEvent, onRecurEvent, onClearDone,
-  dayOptions, onReschedule, onRecurTodo, onSkipDay, onDeleteSeries,
+  dayOptions, onReschedule, onRecurTodo, onSkipDay, onDeleteSeries, onSetTime,
 }) {
   const done = items.filter((i) => i.done).length;
   const [showDone, setShowDone] = useState(false);
-  const active = items.filter((i) => !i.done);
+  const active = items.filter((i) => !i.done).slice().sort(byTime);
+  events = events.slice().sort(byTime);
   const finished = items.filter((i) => i.done);
   return (
     <div className={"day" + (isToday ? " today" : "")}>
@@ -299,7 +351,8 @@ export function DayColumn({
               <EventRow key={ev.id} item={ev}
                 onEdit={(t) => onEditEvent(ev.id, t)}
                 onRemove={() => onRemoveEvent(ev.id)}
-                onRecur={(r) => onRecurEvent(ev.id, r)} />
+                onRecur={(r) => onRecurEvent(ev.id, r)}
+                onSetTime={onSetTime && ((t, r) => onSetTime(ev.id, t, r))} />
             ))}
           </div>
         )}
@@ -316,6 +369,7 @@ export function DayColumn({
                 onRecur: (v) => onRecurTodo(it.id, v),
                 onSkipDay: () => onSkipDay(it),
                 onDeleteSeries: () => onDeleteSeries(it.id),
+                onSetTime: onSetTime && ((t, r) => onSetTime(it.id, t, r)),
               }}
               onToggle={(d) => onToggle(it, d)}
               onEdit={(t) => onEdit(it.id, t)}

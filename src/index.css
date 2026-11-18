@@ -524,3 +524,20 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .sort-done{text-align:center; padding:18px 0 6px;}
 .sort-done-big{font-family:var(--display); font-weight:700; font-size:26px; margin-bottom:6px;}
 .sort-done p{color:var(--muted); font-size:13px; margin:0 0 18px;}
+
+/* ============ TIMES + REMINDERS on day items ============ */
+.time-wrap{flex:0 0 auto;}
+.tlabel{border:none; background:rgba(224,163,62,.14); color:#8a5f14; font-family:var(--mono); font-size:9.5px; font-weight:700; line-height:1; border-radius:4px; padding:3px 4px; margin-top:1px; cursor:pointer; white-space:nowrap;}
+.tlabel:hover{background:rgba(224,163,62,.28);}
+.erow .tlabel{background:rgba(110,139,166,.14); color:#3f5d77;}
+.erow .tlabel:hover{background:rgba(110,139,166,.26);}
+.tbell{font-size:8px; margin-left:2px;}
+.time-btn{opacity:0; border:none; background:transparent; color:var(--muted); cursor:pointer; font-size:12px; line-height:1; padding:1px 2px 0; transition:.15s;}
+.row:hover .time-btn,.erow:hover .time-btn{opacity:.8;}
+.time-btn:hover{color:var(--today); opacity:1;}
+.time-menu{min-width:0; width:136px;}
+.time-menu select.menu-date{width:calc(100% - 12px);}
+.time-actions{display:flex; gap:4px; padding:4px 6px 2px;}
+.time-actions button{flex:1; text-align:center !important;}
+.time-actions button:disabled{opacity:.4; cursor:default;}
+.time-menu.anchor-left{left:0; right:auto;}
