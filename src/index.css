@@ -462,3 +462,24 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
 .chore-check,.bill-pay{width:14px; height:14px; border-radius:4px;}
 .chore-check .tick,.bill-pay .tick{width:9px; height:9px;}
 .bill-row{padding:3px 4px;}
+
+/* ============ VISIBLE DELETE BUTTONS ============
+   Delete (×) buttons used to be fully transparent until hover, and the ones in
+   edit mode never appeared at all. Now: list items show a faint × that darkens
+   on hover; every × in edit mode is a clear red button. */
+.del{opacity:.35; color:var(--ink); font-size:14px; font-weight:600;}
+.row:hover .del{opacity:.75;}
+.del:hover{opacity:1 !important; color:var(--urgent);}
+.panel-edit-head .del,.chore-row .del,.bill-row .del,.habit-edit-row .del{
+  opacity:1; color:var(--urgent); background:rgba(221,107,83,.12);
+  width:18px; height:18px; border-radius:50%; padding:0; font-size:13px; line-height:1;
+  display:grid; place-items:center; flex:0 0 auto;
+}
+.panel-edit-head .del:hover,.chore-row .del:hover,.bill-row .del:hover,.habit-edit-row .del:hover{background:var(--urgent); color:#fff;}
+
+/* Panel edit header: the name gets its own full-width line; arrows, the
+   work/personal menu and delete sit underneath, so the name is never squeezed. */
+.panel-edit-head{flex-wrap:wrap; row-gap:5px;}
+.panel-edit-head .panel-rename{order:-1; flex:1 1 100%;}
+.panel-edit-head .del{margin-left:auto;}
+.panel-edit-head .panel-cat-select{flex:0 1 82px; width:82px; min-width:0;}
