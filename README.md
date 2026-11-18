@@ -11,7 +11,7 @@ Everything below is copy-paste. Run git commands in the **standalone Mac Termina
 
 1. Go to supabase.com → **New project**. Name it `weekly-dashboard`. Pick a region near Toronto (East US is fine). Save the database password somewhere.
 2. Wait for it to finish provisioning.
-3. Left sidebar → **SQL Editor** → **New query**. Paste the entire contents of `supabase_schema.sql` and click **Run**. You should see "Success."
+3. Left sidebar → **SQL Editor** → **New query**. Paste the entire contents of `supabase/supabase_schema.sql`, then each `supabase/migration_*.sql` file, and click **Run**. You should see "Success."
 4. Left sidebar → **Project Settings → API**. Copy two things:
    - **Project URL** (looks like `https://abcd1234.supabase.co`)
    - **anon public** key (the long one under "Project API keys")
@@ -97,7 +97,7 @@ git push -u origin main
 - `src/components/RolloverNudge.jsx` — the "still want these?" review for overdue day items.
 - `src/lib/db.js` — every read/write to Supabase lives here. One file to look at when changing data behavior.
 - `src/lib/dates.js` — week math.
-- `supabase_schema.sql` — the database. Re-runnable.
+- `supabase/` — the database: `supabase_schema.sql` plus the `migration_*.sql` files added since. All re-runnable.
 
 ### Editing your panels / habits later
 For now, panels and habits are seeded once. To rename or add them, edit rows directly in the Supabase **Table editor** (`panels`, `habits` tables) — quick and safe. A proper in-app "manage panels" UI is a good v1.1 addition once you know which categories you actually use.
