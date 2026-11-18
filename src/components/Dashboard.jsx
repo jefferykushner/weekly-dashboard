@@ -17,6 +17,7 @@ import {
 } from "../lib/db";
 import { Panel, DayColumn, Row, AddRow, EditableName } from "./parts";
 import RolloverNudge from "./RolloverNudge";
+import SortCrumbs from "./SortCrumbs";
 import ConfettiBurst from "./ConfettiBurst";
 import ProgressRing from "./ProgressRing";
 import ChoresPanel from "./ChoresPanel";
@@ -43,6 +44,7 @@ export default function Dashboard() {
   const setEditMode = setHabitEdit;
   // Brain dump items mid-fade after being checked (see checkOffInbox).
   const [leavingIds, setLeavingIds] = useState(() => new Set());
+  const [sortOpen, setSortOpen] = useState(false);
   // Intention suggestions
   const [shuffle, setShuffle] = useState(0);
   const [topWords, setTopWords] = useState([]);
@@ -708,7 +710,15 @@ export default function Dashboard() {
             <div className="panel-head">
               <span className="dot" style={{ background: "var(--ink)" }} />
               <h3>Brain dump</h3>
-              <span className="hint">park it, sort later</span>
+              {model.inbox.length > 0 ? (
+                <button
+                  className={"sort-open" + (model.inbox.length >= 5 ? " hot" : "")}
+                  onClick={() => setSortOpen(true)}
+                  title="Sort your crumbs one at a time"
+                >sort {model.inbox.length} →</button>
+              ) : (
+                <span className="hint">park it, sort later</span>
+              )}
             </div>
             <div className="items">
               {model.inbox.filter((it) => !it.done || leavingIds.has(it.id)).map((it) => (
@@ -805,6 +815,25 @@ export default function Dashboard() {
         <div className="toast-container">
           {toasts.map((t) => <div key={t.id} className="toast">{t.msg}</div>)}
         </div>
+      )}
+
+      {sortOpen && (
+        <SortCrumbs
+          items={model.inbox}
+          panels={model.panels}
+          onDay={moveInboxToDay}
+          onPanel={moveInboxToPanel}
+          onDone={(id) => {
+            patchList("inbox", (l) => l.filter((x) => x.id !== id));
+            setDone(id, true).catch(() => {});
+          }}
+          onDelete={removeIn("inbox")}
+          onEdit={editIn("inbox")}
+          onClose={() => {
+            setSortOpen(false);
+            if (model.inbox.length === 0) celebrate("Brain dump cleared");
+          }}
+        />
       )}
 
       <RolloverNudge
