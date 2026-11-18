@@ -24,7 +24,7 @@ import ChoresPanel from "./ChoresPanel";
 import BillsPanel from "./BillsPanel";
 import { buildSuggestions, suggestionFor } from "../lib/suggest";
 import { parseTime, defaultRemind } from "../lib/timeparse";
-import { setTime } from "../lib/db";
+import { setTime, setPanelSomeday } from "../lib/db";
 import { getWords } from "../lib/db";
 
 const DEFAULT_PANELS = [
@@ -47,6 +47,8 @@ export default function Dashboard() {
   // Brain dump items mid-fade after being checked (see checkOffInbox).
   const [leavingIds, setLeavingIds] = useState(() => new Set());
   const [sortOpen, setSortOpen] = useState(false);
+  // Shelf: which tucked-away list (panel id, or "bills") is open in a pop-over.
+  const [shelfOpen, setShelfOpen] = useState(null);
   // Intention suggestions
   const [shuffle, setShuffle] = useState(0);
   const [topWords, setTopWords] = useState([]);
@@ -307,6 +309,16 @@ export default function Dashboard() {
     setModel((m) => ({ ...m, panels: m.panels.map((p) => (p.id === id ? { ...p, category } : p)) }));
     updatePanelCategory(id, category).catch(() => {});
   };
+  const onSomedayPanel = (id, someday) => {
+    setModel((m) => ({ ...m, panels: m.panels.map((p) => (p.id === id ? { ...p, someday } : p)) }));
+    setShelfOpen(null);
+    setPanelSomeday(id, someday).catch(() => {
+      setModel((m) => ({ ...m, panels: m.panels.map((p) => (p.id === id ? { ...p, someday: !someday } : p)) }));
+      const tid = Date.now();
+      setToasts((t) => [...t, { id: tid, msg: "Run migration_someday.sql in Supabase to use Someday." }]);
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== tid)), 5000);
+    });
+  };
   const onDeletePanel = (id) => {
     if (!window.confirm("Delete this list and everything in it?")) return;
     setModel((m) => ({
@@ -541,6 +553,74 @@ export default function Dashboard() {
 
   const weekLabel = `${MONTHS[mon.getMonth()]} ${mon.getDate()} – ${MONTHS[addDays(mon, 6).getMonth()]} ${addDays(mon, 6).getDate()}`;
 
+  // ---- board layout: what gets a panel vs. a spot on the shelf ----
+  const focusLists = model ? model.panels.filter((p) => focus === "all" || (p.category || "both") === "both" || (p.category || "both") === focus) : [];
+  const openCount = (p) => model.panelItems.filter((t) => t.panel_id === p.id && !t.done).length;
+  const shelvedList = (p) => !editMode && (p.someday || openCount(p) === 0);
+  const gridLists = focusLists.filter((p) => !shelvedList(p));
+  const shelfLists = focusLists.filter(shelvedList);
+  const unpaidBills = bills.filter((b) => passesFocus(b.category) && !b.paid).length;
+  const billsShelved = !editMode && unpaidBills === 0;
+  // Fill the space with whatever is on the board: one tall row when it fits,
+  // otherwise two rows (more in edit mode, which scrolls).
+  const tiles = 3 + (billsShelved ? 0 : 1) + gridLists.length + (editMode ? 1 : 0);
+  const cols = tiles <= 7 ? Math.max(tiles, 3) : Math.min(7, Math.ceil(tiles / 2));
+  const rows = Math.ceil(tiles / cols);
+  const lowerGrid = {
+    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+    gridTemplateRows: `repeat(${rows}, minmax(${rows > 2 ? "220px" : "0"}, 1fr))`,
+    overflowY: rows > 2 ? "auto" : "hidden",
+  };
+
+  const renderList = (p) => {
+    const idx = model.panels.indexOf(p);
+    return (
+      <Panel
+                    key={p.id}
+                    title={p.title}
+                    accent={p.accent}
+                    category={p.category || "both"}
+                    editMode={editMode}
+                    onRename={(t) => onRenamePanel(p.id, t)}
+                    onCategory={(c) => onCategoryPanel(p.id, c)}
+                    onDelete={() => onDeletePanel(p.id)}
+                    onLeft={() => onMovePanel(idx, -1)}
+                    onRight={() => onMovePanel(idx, 1)}
+                    canLeft={idx > 0}
+                    canRight={idx < model.panels.length - 1}
+                    items={model.panelItems.filter((t) => t.panel_id === p.id)}
+                    onToggle={toggleIn("panelItems")}
+                    onEdit={editIn("panelItems")}
+                    onRemove={removeIn("panelItems")}
+                    onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
+                    onClearDone={clearDone("panelItems", (x) => x.panel_id === p.id)}
+                    dayOptions={dayOptions}
+                    panelOptions={model.panels.filter((op) => op.id !== p.id).map((op) => ({ id: op.id, title: op.title }))}
+                    onMoveToDay={(id, iso) => movePanelToDay(id, iso)}
+                    onMoveToPanel={(id, pid) => movePanelToPanel(id, pid)}
+                    someday={!!p.someday}
+                    onSomeday={editMode ? undefined : () => onSomedayPanel(p.id, !p.someday)}
+                  />
+    );
+  };
+
+  const renderBills = () => (
+          <BillsPanel
+            bills={bills.filter((b) => passesFocus(b.category))}
+            allBills={bills}
+            editMode={editMode}
+            focus={focus}
+            onAdd={onAddBill}
+            onPay={onPayBill}
+            onUnpay={onUnpayBill}
+            onDelete={onDeleteBill}
+            onUpdate={() => {}}
+            onUpload={onUploadInvoice}
+            onViewFile={onViewInvoice}
+            onCategory={onBillCategory}
+          />
+  );
+
   return (
     <div className="dash-root">
       <div className="binding" aria-hidden="true">
@@ -601,7 +681,10 @@ export default function Dashboard() {
         </div>
 
         <div className="page-content">
-        <section className="week">
+        <section className="week" style={{
+          // This week: days already gone get narrower so today and what's ahead have room.
+          gridTemplateColumns: weekDates.map((d) => (toISO(d) < today ? "0.55fr" : "1fr")).join(" "),
+        }}>
           {weekDates.map((d, i) => {
             const iso = toISO(d);
             const plain = model.dayInWeek.filter((t) => t.dt === iso);
@@ -620,6 +703,7 @@ export default function Dashboard() {
                 name={DAY_NAMES[i]}
                 date={d}
                 isToday={iso === today}
+                isPast={iso < today}
                 items={items}
                 events={events}
                 dayOptions={dayOptions}
@@ -648,7 +732,7 @@ export default function Dashboard() {
           })}
         </section>
 
-        <section className="lower">
+        <section className="lower" style={lowerGrid}>
           {/* Daily tracker / Work habits — filtered by focus */}
           {(() => {
             const filtered = model.habits.filter((h) => passesFocus(h.category));
@@ -781,21 +865,8 @@ export default function Dashboard() {
             <AddRow placeholder="dump anything…" onAdd={addIn("inbox", { kind: "inbox" })} />
           </div>
 
-          {/* Bills tracker */}
-          <BillsPanel
-            bills={bills.filter((b) => passesFocus(b.category))}
-            allBills={bills}
-            editMode={editMode}
-            focus={focus}
-            onAdd={onAddBill}
-            onPay={onPayBill}
-            onUnpay={onUnpayBill}
-            onDelete={onDeleteBill}
-            onUpdate={() => {}}
-            onUpload={onUploadInvoice}
-            onViewFile={onViewInvoice}
-            onCategory={onBillCategory}
-          />
+          {/* Bills tracker (moves to the shelf when nothing is unpaid) */}
+          {!billsShelved && renderBills()}
 
           {/* Chores tracker */}
           <ChoresPanel
@@ -813,43 +884,45 @@ export default function Dashboard() {
             onCategory={onChoreCategory}
           />
 
-          {/* Your lists — renameable, reorderable, filtered by focus */}
-          {model.panels
-            .filter((p) => focus === "all" || (p.category || "both") === "both" || (p.category || "both") === focus)
-            .map((p) => {
-              const idx = model.panels.indexOf(p);
-              return (
-                <Panel
-                  key={p.id}
-                  title={p.title}
-                  accent={p.accent}
-                  category={p.category || "both"}
-                  editMode={editMode}
-                  onRename={(t) => onRenamePanel(p.id, t)}
-                  onCategory={(c) => onCategoryPanel(p.id, c)}
-                  onDelete={() => onDeletePanel(p.id)}
-                  onLeft={() => onMovePanel(idx, -1)}
-                  onRight={() => onMovePanel(idx, 1)}
-                  canLeft={idx > 0}
-                  canRight={idx < model.panels.length - 1}
-                  items={model.panelItems.filter((t) => t.panel_id === p.id)}
-                  onToggle={toggleIn("panelItems")}
-                  onEdit={editIn("panelItems")}
-                  onRemove={removeIn("panelItems")}
-                  onAdd={addIn("panelItems", { kind: "panel", panel_id: p.id })}
-                  onClearDone={clearDone("panelItems", (x) => x.panel_id === p.id)}
-                  dayOptions={dayOptions}
-                  panelOptions={model.panels.filter((op) => op.id !== p.id).map((op) => ({ id: op.id, title: op.title }))}
-                  onMoveToDay={(id, iso) => movePanelToDay(id, iso)}
-                  onMoveToPanel={(id, pid) => movePanelToPanel(id, pid)}
-                />
-              );
-            })}
+          {/* Your lists: ones with open items get a panel; empty, finished and Someday
+              lists wait on the shelf below. Edit mode shows every list. */}
+          {gridLists.map(renderList)}
 
           {editMode && (
             <button className="panel add-panel" onClick={onAddPanel}>＋ add list</button>
           )}
         </section>
+
+        {(shelfLists.length > 0 || billsShelved) && (
+          <section className="shelf" aria-label="Shelf">
+            {billsShelved && (
+              <button className="shelf-chip" onClick={() => setShelfOpen("bills")}>
+                <span className="dot" style={{ background: "var(--urgent)" }} />Bills
+                <span className="shelf-meta">✓ all paid</span>
+              </button>
+            )}
+            {shelfLists.filter((p) => !p.someday).map((p) => {
+              const all = model.panelItems.filter((t) => t.panel_id === p.id).length;
+              return (
+                <button key={p.id} className="shelf-chip" onClick={() => setShelfOpen(p.id)}>
+                  <span className="dot" style={{ background: p.accent }} />{p.title}
+                  <span className="shelf-meta">{all ? `✓ ${all}/${all}` : "empty"}</span>
+                </button>
+              );
+            })}
+            {shelfLists.some((p) => p.someday) && (
+              <>
+                <span className="shelf-label">someday</span>
+                {shelfLists.filter((p) => p.someday).map((p) => (
+                  <button key={p.id} className="shelf-chip someday" onClick={() => setShelfOpen(p.id)}>
+                    <span className="dot" style={{ background: p.accent }} />{p.title}
+                    {openCount(p) > 0 && <span className="shelf-meta">{openCount(p)} open</span>}
+                  </button>
+                ))}
+              </>
+            )}
+          </section>
+        )}
         </div>{/* close page-content */}
       </div>
 
@@ -857,6 +930,18 @@ export default function Dashboard() {
       {toasts.length > 0 && (
         <div className="toast-container">
           {toasts.map((t) => <div key={t.id} className="toast">{t.msg}</div>)}
+        </div>
+      )}
+
+      {shelfOpen && (
+        <div className="shelf-pop" onMouseDown={(e) => { if (e.target === e.currentTarget) setShelfOpen(null); }}
+          onKeyDown={(e) => { if (e.key === "Escape") setShelfOpen(null); }}>
+          <div className="shelf-pop-card">
+            <button className="sort-x shelf-pop-x" onClick={() => setShelfOpen(null)} aria-label="Close">×</button>
+            {shelfOpen === "bills"
+              ? renderBills()
+              : (() => { const p = model.panels.find((x) => x.id === shelfOpen); return p ? renderList(p) : null; })()}
+          </div>
         </div>
       )}
 

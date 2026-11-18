@@ -219,6 +219,12 @@ export async function persistHabitOrder(orderedIds) {
 // ---------------------------------------------------------------
 //  Panels
 // ---------------------------------------------------------------
+// Tuck a list away on the Someday shelf (needs migration_someday.sql).
+export async function setPanelSomeday(id, someday) {
+  const { error } = await supabase.from("panels").update({ someday }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function getPanels() {
   const { data } = await supabase.from("panels").select("*").order("position");
   return data || [];

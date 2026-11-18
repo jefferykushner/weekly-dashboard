@@ -247,6 +247,7 @@ export function Panel({
   editMode, onRename, onDelete, onLeft, onRight, canLeft, canRight, onClearDone,
   category, onCategory,
   dayOptions, panelOptions, onMoveToDay, onMoveToPanel,
+  someday, onSomeday,
 }) {
   const done = items.filter((i) => i.done).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
@@ -285,6 +286,13 @@ export function Panel({
           <h3>{title}</h3>
           {category && category !== "both" && <span className="cat-badge">{CAT_ICON[category]}</span>}
           {items.length > 0 && <span className="count">{done}/{items.length}</span>}
+          {onSomeday && (
+            <button className={"tuck" + (items.length > 0 ? "" : " solo")} onClick={onSomeday}
+              title={someday ? "Bring back to the board" : "Tuck away on the Someday shelf"}
+              aria-label={someday ? "Bring back to the board" : "Move to Someday"}>
+              {someday ? "⇡ back to board" : "⇣ someday"}
+            </button>
+          )}
         </div>
       )}
       <div className="progress"><span style={{ width: pct + "%", background: accent }} /></div>
@@ -327,7 +335,7 @@ export function Panel({
 }
 
 export function DayColumn({
-  name, date, isToday, items, events,
+  name, date, isToday, isPast, items, events,
   onToggle, onEdit, onRemove, onAdd,
   onAddEvent, onEditEvent, onRemoveEvent, onRecurEvent, onClearDone,
   dayOptions, onReschedule, onRecurTodo, onSkipDay, onDeleteSeries, onSetTime,
@@ -338,7 +346,7 @@ export function DayColumn({
   events = events.slice().sort(byTime);
   const finished = items.filter((i) => i.done);
   return (
-    <div className={"day" + (isToday ? " today" : "")}>
+    <div className={"day" + (isToday ? " today" : "") + (isPast ? " past" : "")}>
       <div className="day-head">
         <span className="day-name">{name}</span>
         <span className="day-num">{date.getDate()}</span>
