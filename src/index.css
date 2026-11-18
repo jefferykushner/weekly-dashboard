@@ -4,7 +4,7 @@
   --bg:#1d1f24; --surface:#FBF8F3; --panel:#F4EEE3; --panel2:#FBF8F3;
   --ink:#2A2620; --muted:#9A8F7E; --line:#E7DECF;
   --today:#E0A33E; --done:#4F9E78; --urgent:#DD6B53;
-  --display:'Space Grotesk',sans-serif; --body:'Inter',sans-serif; --mono:'Space Mono',monospace;
+  --item:11px; --display:'Space Grotesk',sans-serif; --body:'Inter',sans-serif; --mono:'Space Mono',monospace;
 }
 *{box-sizing:border-box;}
 html,body,#root{height:100%; margin:0;}
@@ -449,3 +449,16 @@ body{background:var(--bg); font-family:var(--body); color:var(--ink); -webkit-fo
   .lower{grid-template-columns:repeat(2,1fr); grid-row:auto;}
   .week{grid-template-columns:repeat(4,1fr);}
 }
+
+/* ============ UNIFIED ITEM TEXT (desktop) ============
+   Every list entry on the dashboard uses one size: var(--item), set in :root.
+   Change that one number to make all entries bigger or smaller. */
+.row-text,.row.compact .row-text,.etext,.chore-name,.bill-name,.habit-name{font-size:var(--item); line-height:1.3;}
+.add input,.add.subtle input,.chore-add input,.bill-add-btn{font-size:var(--item);}
+.row{gap:6px; padding:1px 0;}
+.check{width:14px; height:14px; margin-top:0; border-radius:4px;}
+.check .tick{width:9px; height:9px;}
+.chore-row{padding:2px 0;}
+.chore-check,.bill-pay{width:14px; height:14px; border-radius:4px;}
+.chore-check .tick,.bill-pay .tick{width:9px; height:9px;}
+.bill-row{padding:3px 4px;}

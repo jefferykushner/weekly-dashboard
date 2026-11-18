@@ -12,6 +12,20 @@ export function GrowText({ value, onChange, onCommit, placeholder, className }) 
     el.style.height = el.scrollHeight + "px";
   };
   useEffect(() => { resize(); }, [value]);
+  // Re-measure when the box's width changes (panel layout settling, fonts
+  // loading, window resizing). Measuring only once could lock in a height
+  // taken while the box was still narrow, leaving big gaps between items.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let lastWidth = el.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (el.clientWidth !== lastWidth) { lastWidth = el.clientWidth; resize(); }
+    });
+    ro.observe(el);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(resize);
+    return () => ro.disconnect();
+  }, []);
   return (
     <textarea
       ref={ref}
